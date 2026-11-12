@@ -1,14 +1,14 @@
 """Download a time range of the Twitch VOD by fetching HLS segments through the proxy.
-usage: getsection.py START_SEC END_SEC OUT.mp4 [format]
+usage: VOD_URL=<twitch vod url> getsection.py START_SEC END_SEC OUT.ts [format]
 Output starts exactly at the first segment boundary <= START; prints that offset."""
 import os, subprocess, sys, json, tempfile, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 
-URL = "https://www.twitch.tv/videos/2921253522"
+URL = os.environ.get("VOD_URL", "https://www.twitch.tv/videos/2921253522")  # set VOD_URL for another VOD
 YTDLP = "/home/user/Cliper/backend/.venv/bin/yt-dlp"
 start, end, out = float(sys.argv[1]), float(sys.argv[2]), sys.argv[3]
 fmt = sys.argv[4] if len(sys.argv) > 4 else "1080p60"
-cache = f"/home/user/work/m3u8_{fmt}.url"
+cache = f"/home/user/work/m3u8_{URL.rstrip('/').split('/')[-1]}_{fmt}.url"
 if os.path.exists(cache):
     m3u8 = open(cache).read().strip()
 else:
