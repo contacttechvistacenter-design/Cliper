@@ -39,6 +39,10 @@ Same look every time; only the inputs change. Renderer: `clips/tools/render_clip
 - Hook is a question or tease that stays true to the clip (exaggerate if it helps, never invent).
 - **Never first person** ("entramos", "nos dieron", "le compramos"): the person posting is not the creator and would be
   impersonating them. Use a question, or the creator's name in third person ("Juanca entra a la cocina...").
+- **Platform safety (a Speed clip was removed from YouTube for this):** be extra careful with minors, sexual or insulting
+  language, slurs and hateful jokes, also when it is a joke or an AI/fake video. Prefer another moment; if a short line is
+  the only issue, cut it and never caption it. Whisper mishears kids' voices, so don't put guessed words on screen.
+  When a clip has a minor or sensitive wording, tell the user in the delivery message.
 - No CapCut/OpusClip marks, no full-screen unedited video, no repeating the same cut twice.
 - Output H.264 1080x1920, loudnorm -14 LUFS. Quality is capped by the source resolution; say so if the source is 720p.
 
