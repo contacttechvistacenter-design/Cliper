@@ -1,39 +1,19 @@
-"""9:16 (1080x1920) clip for a Juancar Reformed video.
-usage: render_juancar.py OUT.mp4  (edit the CONFIG block for another clip)
+"""9:16 (1080x1920) promo clip: hook / video / channel watermark / captions / thumbnail.
+usage: render_clip.py CONFIG.json OUT.mp4  (config example: clips/juancar/perro_01.json; run from the repo root)
 
 Layout: blurred copy of the video as background; hook text on top; video strip
 (clock, burned-in subs and Twitch logos cropped out); YouTube watermark under it;
 our Spanish captions (the source subs only show ~15% of the time); thumbnail at the bottom.
 """
-import subprocess, sys
+import json, subprocess, sys
 
-# ---- CONFIG -----------------------------------------------------------------
-SRC = "/home/user/work/juancar/video5.mp4"
-THUMB = "/tmp/claude-0/-home-user-Cliper/d093ee1a-7384-5b4c-a718-2c6ffc8e45e9/images/3.jpg"
-LOGO = "/tmp/claude-0/-home-user-Cliper/d093ee1a-7384-5b4c-a718-2c6ffc8e45e9/images/4.png"
-FONTS = "/home/user/Cliper/backend/fonts"
-HOOK = r"¿NOS DIERON CARNE\NDE PERRO GRATIS?"
-# kept source ranges, in order (seconds in the source video)
-RANGES = [(19.6, 21.0), (25.1, 31.1), (35.0, 39.0), (41.2, 51.4), (53.0, 56.8), (59.4, 65.4), (81.8, 87.7), (89.2, 91.8)]
-# caption cues: (start, end, text) in source seconds
-CUES = [
-    (19.7, 20.7, "¿Qué es esto, tío?"), (25.2, 25.9, "¿Qué es esto?"),
-    (26.6, 27.8, "Esto es perro. Esto es perro."), (28.1, 29.5, "Es perro, señora. Es perro."),
-    (29.6, 30.2, "¿Qué es esto?"), (30.3, 31.0, "No, no."),
-    (35.1, 36.6, "Cómetelo antes de que diga que es perro frito."), (37.6, 38.9, "Huele a perro frito. ¿A que sí?"),
-    (41.3, 43.3, "Carne de perro recién asado."), (43.9, 46.3, "—Cerdo. —Ah, ¿cerdo?"),
-    (46.5, 47.9, "No, no. Carne de perro."), (48.0, 50.3, "Dile que lo repita. Dime qué significa esto."),
-    (50.5, 51.3, "¿Puedes repetírmelo?"), (53.0, 54.2, "Es carne de cerdo."),
-    (54.3, 56.5, "¿Qué? ¿Cerdo? No creo. No, no."), (59.6, 59.9, "Cómelo."),
-    (60.3, 61.7, "No, no me gusta."), (61.8, 63.8, "Carne de cerdo. Es cerdo de verdad."),
-    (63.9, 65.2, "Sí, cerdo. Cerdo. Vale, cómetelo."),
-    (81.9, 83.9, "¿Por qué ponía carne? Ponía carne de perro de verdad, ¿eh, brother?"),
-    (84.2, 87.5, "O sea, perro y cerdo en la misma palabra, ¿no?"),
-    (89.3, 90.5, "Fuera coña. Huele un poco raro, ¿eh?"), (90.5, 91.6, "Huele fatal. Huele fatal."),
-]
-# ------------------------------------------------------------------------------
-out = sys.argv[1]
-D = "/home/user/work/juancar"
+CFG = json.load(open(sys.argv[1]))
+SRC, THUMB, LOGO, HOOK = CFG["src"], CFG["thumb"], CFG["logo"], CFG["hook"]
+FONTS = CFG.get("fonts", "backend/fonts")
+RANGES = [tuple(r) for r in CFG["ranges"]]   # kept source ranges, in order (seconds)
+CUES = [tuple(c) for c in CFG["cues"]]       # (start, end, text) in source seconds
+D = CFG.get("workdir", "/tmp")
+out = sys.argv[2]
 
 def remap(t):
     acc = 0.0

@@ -1,0 +1,157 @@
+{
+ "src": "/home/user/work/juancar/video5.mp4",
+ "thumb": "clips/juancar/assets/thumb_comida_barata_vs_cara.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "¿NOS DIERON CARNE\\NDE PERRO GRATIS?",
+ "ranges": [
+  [
+   19.6,
+   21.0
+  ],
+  [
+   25.1,
+   31.1
+  ],
+  [
+   35.0,
+   39.0
+  ],
+  [
+   41.2,
+   51.4
+  ],
+  [
+   53.0,
+   56.8
+  ],
+  [
+   59.4,
+   65.4
+  ],
+  [
+   81.8,
+   87.7
+  ],
+  [
+   89.2,
+   91.8
+  ]
+ ],
+ "cues": [
+  [
+   19.7,
+   20.7,
+   "¿Qué es esto, tío?"
+  ],
+  [
+   25.2,
+   25.9,
+   "¿Qué es esto?"
+  ],
+  [
+   26.6,
+   27.8,
+   "Esto es perro. Esto es perro."
+  ],
+  [
+   28.1,
+   29.5,
+   "Es perro, señora. Es perro."
+  ],
+  [
+   29.6,
+   30.2,
+   "¿Qué es esto?"
+  ],
+  [
+   30.3,
+   31.0,
+   "No, no."
+  ],
+  [
+   35.1,
+   36.6,
+   "Cómetelo antes de que diga que es perro frito."
+  ],
+  [
+   37.6,
+   38.9,
+   "Huele a perro frito. ¿A que sí?"
+  ],
+  [
+   41.3,
+   43.3,
+   "Carne de perro recién asado."
+  ],
+  [
+   43.9,
+   46.3,
+   "—Cerdo. —Ah, ¿cerdo?"
+  ],
+  [
+   46.5,
+   47.9,
+   "No, no. Carne de perro."
+  ],
+  [
+   48.0,
+   50.3,
+   "Dile que lo repita. Dime qué significa esto."
+  ],
+  [
+   50.5,
+   51.3,
+   "¿Puedes repetírmelo?"
+  ],
+  [
+   53.0,
+   54.2,
+   "Es carne de cerdo."
+  ],
+  [
+   54.3,
+   56.5,
+   "¿Qué? ¿Cerdo? No creo. No, no."
+  ],
+  [
+   59.6,
+   59.9,
+   "Cómelo."
+  ],
+  [
+   60.3,
+   61.7,
+   "No, no me gusta."
+  ],
+  [
+   61.8,
+   63.8,
+   "Carne de cerdo. Es cerdo de verdad."
+  ],
+  [
+   63.9,
+   65.2,
+   "Sí, cerdo. Cerdo. Vale, cómetelo."
+  ],
+  [
+   81.9,
+   83.9,
+   "¿Por qué ponía carne? Ponía carne de perro de verdad, ¿eh, brother?"
+  ],
+  [
+   84.2,
+   87.5,
+   "O sea, perro y cerdo en la misma palabra, ¿no?"
+  ],
+  [
+   89.3,
+   90.5,
+   "Fuera coña. Huele un poco raro, ¿eh?"
+  ],
+  [
+   90.5,
+   91.6,
+   "Huele fatal. Huele fatal."
+  ]
+ ]
+}
