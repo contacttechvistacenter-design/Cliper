@@ -1,28 +1,28 @@
 {
  "vid": [
   1176,
-  708,
+  588,
   524,
-  262
+  300
  ],
  "vid_out": [
   1080,
-  650,
-  410
+  540,
+  400
  ],
  "cam": [
-  2,
-  385,
-  520,
-  288
+  16,
+  386,
+  490,
+  286
  ],
  "cam_out": [
-  880,
-  487,
-  1150
+  1080,
+  630,
+  1045
  ],
  "hook_y": 290,
- "cap_y": 1105,
+ "cap_y": 995,
  "fps": 30,
  "src": "/home/user/work/lacy/raw_t.ts",
  "hook": "WHAT IF THE FORTNITE TOKEN HAD\\NA BOUNTY ON YOUR HEAD?",
