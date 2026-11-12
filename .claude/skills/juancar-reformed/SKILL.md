@@ -19,6 +19,7 @@ Goal: promote the videos so people watch the full original on YouTube. Build cli
   "Juancar Reformed" watermark (cover the Twitch logo).
 - Description must say to watch the full video on YouTube searching **Juancar Reformed**, e.g. "Vídeo completo en
   YouTube: Juancar Reformed". A name is enough; no link needed.
+- Hooks: never first person; say "Juanca ..." or ask a question (user's rule).
 - Allowed: taking things out of context to go viral, if it still makes sense with the clip.
 - Not allowed: reactions, full-screen/unedited video, hookless or senseless clips, CapCut/OpusClip marks, the same
   clip uploaded twice without edits, low quality.
@@ -44,11 +45,11 @@ environment's allowed hosts. List the folder with `gdown.download_folder`'s inte
 Clips live in `clips/juancar/<name>.mp4` with a `<name>.json` config (render: `python clips/tools/render_clip.py cfg.json out.mp4`).
 | clip | moment | hook |
 |---|---|---|
-| perro_01 | 0:19 dog meat | ¿NOS DIERON CARNE DE PERRO GRATIS? |
-| chico_02 | 6:17 + 7:08, buying food for a scammed guy | LE COMPRAMOS COMIDA A UN CHICO ESTAFADO EN CHINA |
+| perro_01 | 0:19 dog meat | ¿LE DIERON CARNE DE PERRO GRATIS A JUANCA? |
+| chico_02 | 6:17 + 7:08, buying food for a scammed guy | JUANCA LE COMPRA COMIDA A UN CHICO ESTAFADO EN CHINA |
 | 259_03 | 12:14-13:26, the 259 euro meal | ¿259 € POR UNA COMIDA EN CHINA? |
 | hamburguesa_04 | 4:47 + 5:38, spicy Chinese burger | LA HAMBURGUESA CHINA QUE PICA DE LOCOS |
-| cocina_05 | 3:01-4:43, the street-food kitchen and the cat | ENTRAMOS A LA COCINA DE UN RESTAURANTE BARATO |
+| cocina_05 | 3:01-4:43, the street-food kitchen and the cat | JUANCA ENTRA A LA COCINA DE UN RESTAURANTE BARATO |
 Unused moments: bamboo ice cream 1:33, hot pot 14:18, restaurant show 15:48, toilet "desodorante" 18:22, Sevilla vs China noodles 17:16.
 - Source has burned-in Spanish subs only ~15% of the time plus a Twitch clock/logos: cropped out, own captions.
 - Every clip uses the same thumbnail (`clips/juancar/assets/thumb_comida_barata_vs_cara.jpg`, the dog-meat one). The Drive has

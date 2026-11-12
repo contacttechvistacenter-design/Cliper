@@ -34,6 +34,8 @@ Same look every time; only the inputs change. Renderer: `clips/tools/render_clip
   show; if under ~50% of the time, crop them out and caption everything yourself).
 - Clip is 30-60 s, cut from the best moments, dead air removed, and still makes sense alone.
 - Hook is a question or tease that stays true to the clip (exaggerate if it helps, never invent).
+- **Never first person** ("entramos", "nos dieron", "le compramos"): the person posting is not the creator and would be
+  impersonating them. Use a question, or the creator's name in third person ("Juanca entra a la cocina...").
 - No CapCut/OpusClip marks, no full-screen unedited video, no repeating the same cut twice.
 - Output H.264 1080x1920, loudnorm -14 LUFS. Quality is capped by the source resolution; say so if the source is 720p.
 
