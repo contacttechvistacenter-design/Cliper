@@ -1,0 +1,1529 @@
+"use client";
+
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import {
+  AlertCircle, ArrowRight, ArrowUp, Captions, CaptionsOff, Check, ChevronDown, Clapperboard, Crop, FileVideo, SlidersHorizontal,
+  Info, ListOrdered, Loader2, MessageSquareText, Timer, Paperclip, Sparkles, Target, Upload, Link2, Wand2, X,
+} from "lucide-react";
+import { CaptionSizeControl } from "@/components/caption-size-control";
+import { ComposerSettings } from "@/components/composer-settings";
+import { FeatureTourHost } from "@/components/feature-tour";
+import { OUTPUT_FORMATS, parseCreateSettings, type CreateSettings, type LengthWorkflow, type OutputFormat } from "@/lib/create-settings";
+import { VideoSourceIcon } from "@/components/video-source-icon";
+import { availableWorkflows, useWorkflowsInfo, WorkflowPicker } from "@/components/workflow-picker";
+import { changedSettings, invalidSetting, WorkflowAdvancedSettings, type AdvancedValues } from "@/components/workflow-advanced";
+import { FONT_SEARCH_THRESHOLD, formatUploadLimit, getYouTubeThumbnailUrl, maxVideoUploadBytes, readVideoDuration, uploadVideoFile, validateVideoSourceUrl } from "@/lib/video-upload";
+import { AppShell } from "@/components/app/app-shell";
+import { GenerationCard } from "@/components/app/generation-card";
+import { VideoDownloadStatus } from "@/components/app/video-download-status";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { PaymentFailedBanner } from "@/components/payment-failed-banner";
+import { SubscriptionCancelBanner } from "@/components/subscription-cancel-banner";
+import { UpgradeDialog, UpgradeNudge, getUpgradeState, upgradeReasonForError, useBillingPlanText, type UpgradeReason } from "@/components/billing/upgrade-prompt";
+import { getPublicBillingPlans } from "@/lib/billing-plans";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Kbd } from "@/components/ui/kbd";
+import { useSession } from "@/lib/auth-client";
+import { useBillingSummary } from "@/hooks/use-billing-summary";
+import { billingPlanMessageKey } from "@/lib/billing-plans";
+import { hasPaidAccess } from "@/lib/subscription-status";
+import { track } from "@/lib/datafast";
+import { taskPathFromCreate } from "@/lib/task-create";
+import { formatSupportMessage, parseApiError, type ApiErrorInfo } from "@/lib/api-error";
+import { buildFontOptionsPayload, FONT_TEMPLATE_DEFAULT_VALUE, savedCaptionDefaults, STOCK_FONT_DEFAULTS } from "@/lib/font-options";
+import { fetchGenerations, type GenerationSummary } from "@/lib/generations";
+import { CLIP_LENGTHS, isClipLength, type ClipLength } from "@/lib/clip-duration";
+import {
+  INSTRUCTIONS_MAX_CHARS, isWorkflow, MIN_SOURCE_SECONDS, normalizeTopic, PART_COUNT_OPTIONS, TOPIC_MAX_CHARS, topicIssue,
+  WORKFLOW_STORAGE_KEY, type Workflow, type WorkflowOptions, type WorkflowRequestErrorCode,
+} from "@/lib/workflows";
+import { detectWorkflowIntent, looksLikeInstruction, splitSourceAndInstructions, type WorkflowIntent } from "@/lib/workflow-intent";
+import { cn } from "@/lib/utils";
+import { FontSelectOption, type FontOption } from "@/components/font-select-option";
+
+interface CaptionTemplate {
+  id: string;
+  name: string;
+  description: string;
+  animation: string;
+  font_family?: string;
+  font_size?: number;
+  font_color?: string;
+}
+
+
+const FRAMING_IDS = OUTPUT_FORMATS;
+
+const COLOR_SWATCHES = ["#FFFFFF", "#000000", "#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1"];
+
+type PartCount = "auto" | number;
+const SETTINGS_SAVE_DELAY_MS = 500;
+
+// Here the length chip sets each part's or the whole video's length, not the saved clip length.
+const WORKFLOW_LENGTHS: ReadonlySet<Workflow> = new Set<Workflow>(["series", "recap", "trailer"]);
+const INSTRUCTIONS_COUNTER_FROM = 400;
+// Every create rejection the form can explain in the user's language.
+const WORKFLOW_ERROR_CODES: Record<WorkflowRequestErrorCode, true> = {
+  INVALID_WORKFLOW: true, INVALID_WORKFLOW_OPTIONS: true, TOPIC_REQUIRED: true, TOPIC_TOO_LONG: true,
+  INVALID_PART_COUNT: true, INSTRUCTIONS_TOO_LONG: true, INVALID_WORKFLOW_SETTING: true, WORKFLOW_NOT_AVAILABLE: true, SOURCE_TOO_SHORT_FOR_SERIES: true,
+  TOO_MANY_PARTS: true, SOURCE_TOO_SHORT_FOR_RECAP: true, SOURCE_TOO_SHORT_FOR_TRAILER: true, SOURCE_TOO_SHORT_FOR_TOPIC: true,
+};
+
+const SOURCE_TOO_SHORT_CODES = {
+  series: "SOURCE_TOO_SHORT_FOR_SERIES",
+  topic: "SOURCE_TOO_SHORT_FOR_TOPIC",
+  recap: "SOURCE_TOO_SHORT_FOR_RECAP",
+  trailer: "SOURCE_TOO_SHORT_FOR_TRAILER",
+} as const satisfies Record<Exclude<Workflow, "highlights">, WorkflowRequestErrorCode>;
+
+/** A request typed into the link box, and how to put things back. */
+type UrlRescue =
+  // `url` null: the link box already holds what the user put there, so Undo leaves it.
+  | { kind: "moved"; text: string; undo: { url: string | null; instructions: string; open: boolean } }
+  | { kind: "notALink"; text: string };
+
+function storedWorkflow(): Workflow {
+  try {
+    const stored = window.localStorage.getItem(WORKFLOW_STORAGE_KEY);
+    return isWorkflow(stored) ? stored : "highlights";
+  } catch {
+    return "highlights";
+  }
+}
+
+function formatDuration(seconds: number) {
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function appendInstruction(current: string, addition: string) {
+  const base = current.trim();
+  if (!base) return addition;
+  return base.includes(addition) ? current : `${base}\n${addition}`;
+}
+
+/** "h", "https:/", "https://": the start of a link someone is typing. */
+function isLinkInProgress(value: string) {
+  const typed = value.trim().toLowerCase();
+  return "https://".startsWith(typed) || "http://".startsWith(typed) || /^https?:\/\//.test(typed);
+}
+
+function excerpt(text: string, max = 60) {
+  const characters = [...text];
+  return characters.length > max ? `${characters.slice(0, max - 1).join("").trimEnd()}…` : text;
+}
+
+function formatBytes(bytes: number) {
+  if (bytes > 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
+  return `${Math.max(1, Math.round(bytes / 1e6))} MB`;
+}
+
+function greetingText(t: ReturnType<typeof useTranslations<"home">>, name?: string | null) {
+  const hour = new Date().getHours();
+  const key = hour < 5 ? "upLate" : hour < 12 ? "goodMorning" : hour < 18 ? "goodAfternoon" : "goodEvening";
+  const part = t(`greeting.${key}`);
+  const first = name?.trim().split(/\s+/)[0];
+  return first ? t("greeting.named", { greeting: part, name: first }) : part;
+}
+
+export default function HomeApp() {
+  const t = useTranslations("home");
+  const tCommon = useTranslations("common");
+  const [url, setUrl] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const urlInputRef = useRef<HTMLInputElement | null>(null);
+  const { data: session, isPending } = useSession();
+  const sourceType: "youtube" | "upload" = file ? "upload" : "youtube";
+
+  // Font customization states — null means "use the caption template's own value"
+  const [fontFamily, setFontFamily] = useState<string | null>(null);
+  const [fontSize, setFontSize] = useState<number | null>(null);
+  const [fontColor, setFontColor] = useState<string | null>(null);
+  const [availableFonts, setAvailableFonts] = useState<FontOption[]>([]);
+  const [fontSearch, setFontSearch] = useState("");
+  const [fontLoadError, setFontLoadError] = useState<string | null>(null);
+  const [isUploadingFont, setIsUploadingFont] = useState(false);
+  const fontUploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [captionTemplate, setCaptionTemplate] = useState("default");
+  const [availableTemplates, setAvailableTemplates] = useState<CaptionTemplate[]>([]);
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("vertical");
+  const [clipLength, setClipLength] = useState<ClipLength>("auto");
+  const [clipLengthSaveError, setClipLengthSaveError] = useState(false);
+  const [isClipLengthLoading, setIsClipLengthLoading] = useState(false);
+  const clipLengthEdited = useRef(false);
+  const clipLengthSave = useRef<Promise<unknown>>(Promise.resolve());
+  const [addSubtitles, setAddSubtitles] = useState(true);
+  const [brollAvailable, setBrollAvailable] = useState(false);
+  const [includeBroll, setIncludeBroll] = useState(false);
+  const [cutLongPauses, setCutLongPauses] = useState(true);
+  const [pauseThresholdMs, setPauseThresholdMs] = useState("1200");
+  const [removeFillerWords, setRemoveFillerWords] = useState(true);
+  const [filteredWords, setFilteredWords] = useState("");
+
+  // What to make. Hidden, and always plain highlights, unless the server enables workflows.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const workflowsInfo = useWorkflowsInfo(Boolean(session?.user?.id));
+  const offeredWorkflows = useMemo(() => availableWorkflows(workflowsInfo), [workflowsInfo]);
+  const workflowsEnabled = workflowsInfo?.enabled === true;
+  const [workflow, setWorkflow] = useState<Workflow>(storedWorkflow);
+  const initialWorkflow = useRef(workflow);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [topic, setTopic] = useState("");
+  const [showTopicIssue, setShowTopicIssue] = useState(false);
+  const [partCount, setPartCount] = useState<PartCount>("auto");
+  // Per workflow, like Advanced: a long part and a long recap are different choices.
+  const [workflowLengths, setWorkflowLengths] = useState<Partial<Record<LengthWorkflow, ClipLength>>>({});
+  const [instructions, setInstructions] = useState("");
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  // Per workflow: settings mean different things in each, and switching back keeps them.
+  const [advancedByWorkflow, setAdvancedByWorkflow] = useState<Partial<Record<Workflow, AdvancedValues>>>({});
+  const [sourceSeconds, setSourceSeconds] = useState<number | null>(null);
+  const [rescue, setRescue] = useState<UrlRescue | null>(null);
+  const [suggestion, setSuggestion] = useState<WorkflowIntent | null>(null);
+  const topicInputRef = useRef<HTMLInputElement | null>(null);
+  const instructionsRef = useRef<HTMLTextAreaElement | null>(null);
+  const pastedIntoUrl = useRef(false);
+  // The text the user put back with Undo: leave it alone from then on.
+  const keptAsTyped = useRef<string | null>(null);
+  // When the link box was last held back for the user to look (a suggestion or a request without a link).
+  const heldAt = useRef(0);
+  const durationFile = useRef<File | null>(null);
+  const activeWorkflow: Workflow = workflowsEnabled && offeredWorkflows.has(workflow) ? workflow : "highlights";
+  // A saved series is plain highlights until the server says otherwise, and
+  // submitting that early would charge for the wrong thing.
+  const awaitingWorkflows = workflowsInfo === null && workflow !== "highlights";
+  const advancedSchema = workflowsInfo?.workflows.find((entry) => entry.id === activeWorkflow)?.settings ?? [];
+  // Some workflows can be open to everyone while customizing highlights stays limited.
+  const instructionsOffered = workflowsEnabled
+    && workflowsInfo?.workflows.find((entry) => entry.id === activeWorkflow)?.customizable !== false;
+  const advancedValues = advancedByWorkflow[activeWorkflow] ?? {};
+  const advancedChanges = workflowsEnabled ? changedSettings(advancedSchema, advancedValues) : {};
+  const advancedCount = Object.keys(advancedChanges).length;
+  const advancedProblem = workflowsEnabled ? invalidSetting(advancedSchema, advancedValues) : null;
+  const usesWorkflowLength = WORKFLOW_LENGTHS.has(activeWorkflow);
+  const lengthWorkflow = activeWorkflow as LengthWorkflow;
+  const workflowLength: ClipLength = workflowLengths[lengthWorkflow] ?? "auto";
+  const setWorkflowLength = (length: ClipLength) => setWorkflowLengths((current) => ({ ...current, [lengthWorkflow]: length }));
+
+  const requestedWorkflow = searchParams.get("workflow");
+  useEffect(() => {
+    // "/?workflow=series" from the command palette: pick it, then tidy the address bar.
+    if (!isWorkflow(requestedWorkflow)) return;
+    setWorkflow(requestedWorkflow);
+    router.replace("/", { scroll: false });
+  }, [requestedWorkflow, router]);
+
+  useEffect(() => {
+    try { window.localStorage.setItem(WORKFLOW_STORAGE_KEY, workflow); } catch { /* storage blocked: still works for this visit */ }
+  }, [workflow]);
+
+  const [recent, setRecent] = useState<GenerationSummary[] | null>(null);
+  const [billingSummary, updateBillingSummary] = useBillingSummary(Boolean(session?.user?.id));
+  const [upgradeReason, setUpgradeReason] = useState<UpgradeReason | null>(null);
+  const [lastUpgradeReason, setLastUpgradeReason] = useState<UpgradeReason>({ kind: "start" });
+  const openUpgrade = useCallback((reason: UpgradeReason) => {
+    setLastUpgradeReason(reason);
+    setUpgradeReason(reason);
+  }, []);
+  const youtubeThumbnailUrl = sourceType === "youtube" ? getYouTubeThumbnailUrl(url) : null;
+  // Brand mark of the pasted link; a neutral link icon until it is recognised.
+  const urlSource = url.trim() ? validateVideoSourceUrl(url).source : undefined;
+  const uploadLimitBytes = billingSummary?.max_upload_bytes && billingSummary.max_upload_bytes > 0
+    ? billingSummary.max_upload_bytes
+    : maxVideoUploadBytes();
+
+  useEffect(() => {
+    let cancelled = false;
+    clipLengthEdited.current = false;
+    setClipLength("auto");
+    setSettingsLoaded(false);
+    if (session?.user?.id) {
+      setIsClipLengthLoading(true);
+      void fetch("/api/preferences")
+        .then((response) => response.ok ? response.json() : null)
+        .then((preferences) => {
+          if (cancelled) return;
+          if (!clipLengthEdited.current && isClipLength(preferences?.clipLength)) {
+            setClipLength(preferences.clipLength);
+          }
+          // Caption defaults from Settings; anything picked here meanwhile wins.
+          const captionDefaults = savedCaptionDefaults(preferences);
+          setFontFamily((current) => current ?? captionDefaults.fontFamily);
+          setFontSize((current) => current ?? captionDefaults.fontSize);
+          setFontColor((current) => current ?? captionDefaults.fontColor);
+          if (preferences) applyCreateSettings(parseCreateSettings(preferences.createSettings));
+        })
+        .catch(() => {})
+        .finally(() => { if (!cancelled) setIsClipLengthLoading(false); });
+    } else {
+      setIsClipLengthLoading(false);
+    }
+    return () => { cancelled = true; };
+  }, [session?.user?.id]);
+
+  // Saved settings fill in whatever the user hasn't already changed while they loaded.
+  function applyCreateSettings(saved: CreateSettings) {
+    const unlessChanged = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, untouched: T, value: T | undefined) => {
+      if (value !== undefined) setter((current) => (Object.is(current, untouched) ? value : current));
+    };
+    unlessChanged(setWorkflow, initialWorkflow.current, saved.workflow);
+    unlessChanged(setCaptionTemplate, "default", saved.captionTemplate);
+    unlessChanged(setAddSubtitles, true, saved.addSubtitles);
+    unlessChanged<OutputFormat>(setOutputFormat, "vertical", saved.outputFormat);
+    unlessChanged(setIncludeBroll, false, saved.includeBroll);
+    unlessChanged(setCutLongPauses, true, saved.cutLongPauses);
+    unlessChanged(setPauseThresholdMs, "1200", saved.pauseThresholdMs === undefined ? undefined : String(saved.pauseThresholdMs));
+    unlessChanged(setRemoveFillerWords, true, saved.removeFillerWords);
+    unlessChanged(setFilteredWords, "", saved.filteredWords);
+    if (saved.lengths) setWorkflowLengths((current) => ({ ...saved.lengths, ...current }));
+    if (saved.advanced) setAdvancedByWorkflow((current) => ({ ...saved.advanced, ...current }));
+    setSettingsLoaded(true);
+  }
+
+  function resetCreateSettings() {
+    chooseClipLength("auto");
+    setFontFamily(null);
+    setFontSize(null);
+    setFontColor(null);
+    setCaptionTemplate("default");
+    setAddSubtitles(true);
+    setOutputFormat("vertical");
+    setIncludeBroll(false);
+    setCutLongPauses(true);
+    setPauseThresholdMs("1200");
+    setRemoveFillerWords(true);
+    setFilteredWords("");
+    setWorkflowLengths({});
+    setAdvancedByWorkflow({});
+  }
+
+  function chooseClipLength(value: ClipLength) {
+    clipLengthEdited.current = true;
+    setClipLength(value);
+    setIsClipLengthLoading(false);
+    setClipLengthSaveError(false);
+    // Serialize changes so a slow previous save cannot overwrite the latest choice.
+    clipLengthSave.current = clipLengthSave.current.then(async () => {
+      try {
+        const response = await fetch("/api/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clipLength: value }),
+        });
+        setClipLengthSaveError(!response.ok);
+      } catch {
+        setClipLengthSaveError(true);
+      }
+    });
+  }
+
+  const refreshFonts = useCallback(async () => {
+    try {
+      setFontLoadError(null);
+      const response = await fetch("/api/fonts", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Failed to load fonts (${response.status})`);
+      const data = await response.json();
+      const fonts: FontOption[] = data.fonts || [];
+      setAvailableFonts(fonts);
+
+      const styleElement = document.createElement("style");
+      styleElement.id = "custom-fonts";
+      styleElement.innerHTML = fonts.map((font) => `
+        @font-face {
+          font-family: '${font.name}';
+          src: url('/api/fonts/${font.name}') format('${font.format === "otf" ? "opentype" : "truetype"}');
+          font-weight: normal;
+          font-style: normal;
+        }`).join("\n");
+      document.getElementById("custom-fonts")?.remove();
+      document.head.appendChild(styleElement);
+    } catch (error) {
+      console.error("Failed to load fonts:", error);
+      setFontLoadError(t("errors.fonts"));
+    }
+  }, [t]);
+
+  useEffect(() => { void refreshFonts(); }, [refreshFonts]);
+
+  useEffect(() => {
+    fetch("/api/caption-templates")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => { if (data) setAvailableTemplates(data.templates || []); })
+      .catch((error) => console.error("Failed to load caption templates:", error));
+    // B-roll is only offered when the server has a stock footage provider.
+    fetch("/api/broll/status")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => setBrollAvailable(data?.configured === true))
+      .catch(() => setBrollAvailable(false));
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    fetchGenerations()
+      .then((tasks) => setRecent(tasks.slice(0, 8)))
+      .catch((error) => { console.error("Failed to load recent generations:", error); setRecent([]); });
+  }, [session?.user?.id]);
+
+  const attachFile = (next: File | null) => {
+    if (next && !next.type.startsWith("video/") && !/\.(mp4|mov|avi|mkv|webm|m4v)$/i.test(next.name)) {
+      setError(t("errors.notVideo"));
+      return;
+    }
+    if (next && next.size > uploadLimitBytes) {
+      setError(t("errors.fileTooLarge", {
+        size: formatBytes(next.size),
+        limit: formatUploadLimit(uploadLimitBytes),
+      }));
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    setError(null);
+    setFile(next);
+    // The length is only used for a hint, so it is read in the background.
+    durationFile.current = next;
+    setSourceSeconds(null);
+    if (next) {
+      void readVideoDuration(next).then((seconds) => {
+        if (durationFile.current === next) setSourceSeconds(seconds);
+      });
+    }
+    if (!next && fileInputRef.current) fileInputRef.current.value = "";
+    if (!next) requestAnimationFrame(() => urlInputRef.current?.focus());
+  };
+
+  // The tour shows each workflow on the real page, then puts back what was selected.
+  const workflowBeforeTour = useRef<Workflow | null>(null);
+  const previewWorkflow = useCallback((next: Workflow) => {
+    setWorkflow((current) => {
+      workflowBeforeTour.current ??= current;
+      return next;
+    });
+  }, []);
+  const endWorkflowPreview = useCallback(() => {
+    if (workflowBeforeTour.current) setWorkflow(workflowBeforeTour.current);
+    workflowBeforeTour.current = null;
+  }, []);
+
+  const chooseWorkflow = (next: Workflow) => {
+    setWorkflow(next);
+    setShowTopicIssue(false);
+    setError(null);
+    setSuggestion((current) => (current?.workflow === next ? null : current));
+  };
+
+  /** The workflow a request reads like, when it differs from what is picked and the user may choose it. */
+  const suggestionFor = (text: string): WorkflowIntent | null => {
+    const intent = detectWorkflowIntent(text);
+    if (!intent.workflow || !offeredWorkflows.has(intent.workflow)) return null;
+    if (intent.workflow !== activeWorkflow) return intent;
+    if (intent.workflow === "series" && intent.partCount && intent.partCount !== partCount) return intent;
+    if (intent.workflow === "topic" && intent.topic && normalizeTopic(intent.topic) !== normalizeTopic(topic)) return intent;
+    return null;
+  };
+
+  /**
+   * Pulls a request out of the link box: "link + words" keeps the link and moves
+   * the words to instructions; words alone get a prompt instead of a red error.
+   * Returns what to submit, or null when the user should look first.
+   */
+  const rescueSource = (
+    value: string,
+    base: { instructions: string; open: boolean } = { instructions, open: instructionsOpen },
+  ): { url: string; instructions: string } | null => {
+    const unchanged = { url: value, instructions: base.instructions };
+    if (!instructionsOffered || !value.trim() || value === keptAsTyped.current) return unchanged;
+    const { url: link, rest } = splitSourceAndInstructions(value);
+    if (link && rest) {
+      const nextInstructions = appendInstruction(base.instructions, rest);
+      const intent = suggestionFor(rest);
+      setUrl(link);
+      setInstructions(nextInstructions);
+      setInstructionsOpen(true);
+      setRescue({ kind: "moved", text: rest, undo: { url: value, instructions: base.instructions, open: base.open } });
+      setSuggestion(intent);
+      if (!intent) return { url: link, instructions: nextInstructions };
+      heldAt.current = performance.now();
+      return null;
+    }
+    if (!link && looksLikeInstruction(value)) {
+      setRescue({ kind: "notALink", text: value.trim() });
+      setSuggestion(suggestionFor(value));
+      heldAt.current = performance.now();
+      return null;
+    }
+    if (link && link !== value.trim()) {
+      // Only punctuation around the link ("(https://youtu.be/…),"): keep the link.
+      setUrl(link);
+      return { url: link, instructions: base.instructions };
+    }
+    return unchanged;
+  };
+
+  /**
+   * Edits to the link box. The "not a link" note promises to keep the request,
+   * so a link that replaces it moves the request to instructions.
+   */
+  const changeUrl = (value: string) => {
+    setUrl(value);
+    heldAt.current = 0;
+    let base = { instructions, open: instructionsOpen };
+    if (rescue?.kind === "notALink" && !value.includes(rescue.text)) {
+      if (splitSourceAndInstructions(value).url) {
+        base = { instructions: appendInstruction(instructions, rescue.text), open: true };
+        setInstructions(base.instructions);
+        setInstructionsOpen(true);
+        setRescue({ kind: "moved", text: rescue.text, undo: { url: null, instructions, open: instructionsOpen } });
+      } else if (value.trim() && !isLinkInProgress(value)) {
+        // A different request: the next blur reads it again.
+        setRescue(null);
+        setSuggestion(null);
+      }
+    }
+    if (pastedIntoUrl.current) {
+      pastedIntoUrl.current = false;
+      rescueSource(value, base);
+    }
+  };
+
+  const moveToInstructions = () => {
+    if (rescue?.kind !== "notALink") return;
+    heldAt.current = 0;
+    setRescue({ kind: "moved", text: rescue.text, undo: { url, instructions, open: instructionsOpen } });
+    setInstructions(appendInstruction(instructions, rescue.text));
+    setInstructionsOpen(true);
+    setUrl("");
+    requestAnimationFrame(() => urlInputRef.current?.focus());
+  };
+
+  const undoRescue = () => {
+    if (rescue?.kind !== "moved") return;
+    heldAt.current = 0;
+    if (rescue.undo.url !== null) {
+      keptAsTyped.current = rescue.undo.url;
+      setUrl(rescue.undo.url);
+    }
+    setInstructions(rescue.undo.instructions);
+    setInstructionsOpen(rescue.undo.open);
+    setRescue(null);
+    setSuggestion(null);
+  };
+
+  const applySuggestion = (intent: WorkflowIntent) => {
+    if (!intent.workflow) return;
+    heldAt.current = 0;
+    chooseWorkflow(intent.workflow);
+    if (intent.partCount) setPartCount(intent.partCount);
+    if (intent.topic) setTopic(intent.topic);
+    setSuggestion(null);
+    if (intent.workflow === "topic" && !intent.topic) requestAnimationFrame(() => topicInputRef.current?.focus());
+  };
+
+  const toggleInstructions = () => {
+    const open = !instructionsOpen;
+    setInstructionsOpen(open);
+    if (open) requestAnimationFrame(() => instructionsRef.current?.focus());
+  };
+
+  const workflowErrorMessage = (info: ApiErrorInfo): string | null => {
+    const code = info.code;
+    if (!code || !Object.hasOwn(WORKFLOW_ERROR_CODES, code)) return null;
+    if (code === "TOO_MANY_PARTS") {
+      const maxParts = info.detail?.max_parts;
+      return typeof maxParts === "number" ? t("workflowErrors.TOO_MANY_PARTS", { max_parts: maxParts }) : null;
+    }
+    return t(`workflowErrors.${code}`);
+  };
+
+  const handleFontUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const fontFile = event.target.files?.[0];
+    event.target.value = "";
+    if (!fontFile) return;
+
+    const lower = fontFile.name.toLowerCase();
+    if (!lower.endsWith(".ttf") && !lower.endsWith(".otf")) {
+      setError(t("errors.fontType"));
+      return;
+    }
+
+    try {
+      setIsUploadingFont(true);
+      setError(null);
+      const formData = new FormData();
+      formData.append("file", fontFile);
+      const response = await fetch("/api/fonts/upload", { method: "POST", body: formData });
+      if (!response.ok) {
+        setError(formatSupportMessage(await parseApiError(response, t("errors.uploadFont"))));
+        return;
+      }
+      const data = await response.json();
+      if (data?.font?.name) setFontFamily(data.font.name);
+      await refreshFonts();
+    } catch (uploadError) {
+      console.error("Failed to upload font:", uploadError);
+      setError(t("errors.uploadFontRetry"));
+    } finally {
+      setIsUploadingFont(false);
+    }
+  };
+
+  const filteredFonts = availableFonts.filter((font) => {
+    const keyword = fontSearch.toLowerCase().trim();
+    return !keyword || font.display_name.toLowerCase().includes(keyword) || font.name.toLowerCase().includes(keyword);
+  });
+
+  const canUploadCustomFonts =
+    !billingSummary?.monetization_enabled ||
+    hasPaidAccess(billingSummary.plan, billingSummary.subscription_status, billingSummary.subscription_provider);
+
+  // Effective values for the live preview only — the submitted payload keeps nulls.
+  const selectedTemplate = availableTemplates.find((template) => template.id === captionTemplate);
+  const previewFontFamily = fontFamily ?? selectedTemplate?.font_family ?? "TikTokSans-Regular";
+  const previewFontSize = fontSize ?? selectedTemplate?.font_size ?? 24;
+  const previewFontColor = fontColor ?? selectedTemplate?.font_color ?? "#FFFFFF";
+  const generationRequiresUpgrade = Boolean(billingSummary?.monetization_enabled && !billingSummary.can_create_task);
+  const upgradeState = billingSummary?.monetization_enabled ? getUpgradeState(billingSummary) : null;
+  // Users can explore every option; the plan prompt only appears when they hit Generate.
+  const controlsDisabled = isLoading;
+  const hasSource = sourceType === "upload" ? Boolean(file) : Boolean(url.trim());
+  const cleanupCount = [cutLongPauses, removeFillerWords, filteredWords.trim().length > 0].filter(Boolean).length;
+  const customized = fontFamily !== null || fontSize !== null || fontColor !== null;
+  // Series, recap and trailer lengths are per generation; only the clip length is saved.
+  const lengthLoading = !usesWorkflowLength && isClipLengthLoading;
+  const selectedLength = usesWorkflowLength ? workflowLength : clipLength;
+  const lengthText = (key: "picker" | "title" | "hint" | ClipLength) =>
+    usesWorkflowLength ? t(`lengthByWorkflow.${lengthWorkflow}.${key === "title" ? "picker" : key}`) : t(`clipLength.${key}`);
+  const topicProblem = activeWorkflow === "topic" ? topicIssue(topic) : null;
+  const instructionsUsed = instructionsOffered ? instructions.trim().length : 0;
+  const instructionsTooLong = instructionsUsed > INSTRUCTIONS_MAX_CHARS;
+  const workflowInfo = workflowsInfo?.workflows.find((entry) => entry.id === activeWorkflow);
+  const minSourceSeconds = workflowInfo?.min_source_seconds ?? MIN_SOURCE_SECONDS[activeWorkflow];
+  const sourceTooShort = activeWorkflow !== "highlights" && sourceType === "upload" && sourceSeconds !== null && sourceSeconds < minSourceSeconds;
+  // An explicit part count needs room for every part at its shortest (backend: D ≥ N · min · 1.25).
+  const partRange = workflowsInfo?.workflows.find((entry) => entry.id === "series")?.lengths?.[workflowLengths.series ?? "auto"];
+  const maxPartsThatFit = activeWorkflow === "series" && sourceType === "upload" && sourceSeconds !== null && Array.isArray(partRange)
+    ? Math.floor(sourceSeconds / (partRange[0] * 1.25))
+    : null;
+  const partOptions: PartCount[] = typeof partCount === "number" && !(PART_COUNT_OPTIONS as readonly PartCount[]).includes(partCount)
+    ? ["auto", ...[...PART_COUNT_OPTIONS.filter((value): value is Exclude<typeof value, "auto"> => value !== "auto"), partCount].sort((a, b) => a - b)]
+    : [...PART_COUNT_OPTIONS];
+  const partLabel = partCount === "auto" ? t("parts.auto") : String(partCount);
+  const captionSummary = addSubtitles ? selectedTemplate?.name || t("defaultTemplate") : t("noCaptions");
+  const settingsSummary = [
+    lengthText(selectedLength),
+    ...(activeWorkflow === "series" ? [t("parts.picker", { value: partLabel })] : []),
+    addSubtitles ? `${t("captions")}: ${captionSummary}` : captionSummary,
+    t(`framingOptions.${outputFormat}.label`),
+  ].join(" · ");
+  // Cleanup is on by default, so it isn't counted as a change here; its own section shows what's on.
+  const changedCount = advancedCount + (includeBroll ? 1 : 0);
+  const settingsChanged = changedCount > 0 || selectedLength !== "auto" || partCount !== "auto" || customized || !addSubtitles;
+
+  // Only what is valid is remembered, so a half-typed number never comes back to block the form.
+  const settingsToSave = JSON.stringify({
+    createSettings: {
+      workflow,
+      captionTemplate,
+      addSubtitles,
+      outputFormat,
+      includeBroll,
+      cutLongPauses,
+      removeFillerWords,
+      filteredWords,
+      lengths: workflowLengths,
+      advanced: Object.fromEntries(Object.entries(advancedByWorkflow).map(([id, values]) => {
+        const schema = workflowsInfo?.workflows.find((entry) => entry.id === id)?.settings;
+        return [id, schema?.length ? changedSettings(schema, values) : values];
+      })),
+      ...(Number.isInteger(Number(pauseThresholdMs)) && Number(pauseThresholdMs) >= 250 && Number(pauseThresholdMs) <= 3000 ? { pauseThresholdMs: Number(pauseThresholdMs) } : {}),
+    },
+    // Back to the template's own look is stored as the stock defaults, which read back as "not customized".
+    fontFamily: fontFamily ?? STOCK_FONT_DEFAULTS.fontFamily,
+    ...(fontSize === null || (fontSize >= 12 && fontSize <= 48) ? { fontSize: fontSize ?? STOCK_FONT_DEFAULTS.fontSize } : {}),
+    fontColor: /^#[0-9A-Fa-f]{6}$/.test(fontColor ?? "") ? fontColor : STOCK_FONT_DEFAULTS.fontColor,
+  });
+  // A setting's allowed range can change after it was saved: drop what no longer fits instead of blocking the form.
+  useEffect(() => {
+    if (!settingsLoaded || !workflowsInfo) return;
+    setAdvancedByWorkflow((current) => Object.fromEntries(Object.entries(current).map(([id, values]) => {
+      const schema = workflowsInfo.workflows.find((entry) => entry.id === id)?.settings;
+      return [id, schema?.length ? changedSettings(schema, values) : values];
+    })));
+  }, [settingsLoaded, workflowsInfo]);
+  const savedSettings = useRef<string | null>(null);
+  const pendingSettings = useRef<string | null>(null);
+  const saveSettings = useRef((body: string, keepalive = false) => {
+    savedSettings.current = body;
+    pendingSettings.current = null;
+    void fetch("/api/preferences", { method: "PATCH", headers: { "Content-Type": "application/json" }, body, keepalive }).catch(() => {});
+  });
+  useEffect(() => {
+    if (!settingsLoaded) {
+      savedSettings.current = null;
+      return;
+    }
+    // The first look after loading is what's already stored.
+    if (savedSettings.current === null) {
+      savedSettings.current = settingsToSave;
+      return;
+    }
+    if (savedSettings.current === settingsToSave) {
+      pendingSettings.current = null;
+      return;
+    }
+    pendingSettings.current = settingsToSave;
+    const timer = setTimeout(() => saveSettings.current(settingsToSave), SETTINGS_SAVE_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [settingsLoaded, settingsToSave]);
+  // Generating navigates away straight after a change: don't lose it.
+  useEffect(() => () => {
+    if (pendingSettings.current) saveSettings.current(pendingSettings.current, true);
+  }, []);
+  const partsProblem = activeWorkflow === "series" && typeof partCount === "number" && maxPartsThatFit !== null && partCount > maxPartsThatFit
+    ? maxPartsThatFit < 2 ? t("workflowErrors.SOURCE_TOO_SHORT_FOR_SERIES") : t("workflowErrors.TOO_MANY_PARTS", { max_parts: maxPartsThatFit })
+    : null;
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!hasSource || isLoading || lengthLoading || !session?.user?.id || awaitingWorkflows) return;
+    // Clicking Generate first blurs the link box; if that blur just held a request back, let the user see it.
+    if (heldAt.current > 0 && performance.now() - heldAt.current < 800) return;
+    let sourceUrl = url;
+    let requestInstructions = instructions;
+    if (sourceType !== "upload") {
+      const rescued = rescueSource(url);
+      if (!rescued) return;
+      sourceUrl = rescued.url;
+      requestInstructions = rescued.instructions;
+    }
+    if (topicProblem) {
+      setShowTopicIssue(true);
+      topicInputRef.current?.focus();
+      return;
+    }
+    const sentInstructions = instructionsOffered ? requestInstructions.trim() : "";
+    if (sentInstructions.length > INSTRUCTIONS_MAX_CHARS) {
+      setInstructionsOpen(true);
+      return;
+    }
+    // The server would refuse this upload for its length: say so before spending minutes uploading it.
+    if (activeWorkflow !== "highlights" && (sourceTooShort || partsProblem)) {
+      setError(sourceTooShort ? t(`workflowErrors.${SOURCE_TOO_SHORT_CODES[activeWorkflow]}`) : partsProblem);
+      return;
+    }
+    if (generationRequiresUpgrade) {
+      openUpgrade({ kind: upgradeState?.isPaid ? "limit" : "start" });
+      return;
+    }
+    if (sourceType !== "upload") {
+      const validation = validateVideoSourceUrl(sourceUrl);
+      if (validation.error) { setError(validation.error); return; }
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setStatusMessage("");
+
+    const fontOptions = buildFontOptionsPayload(fontFamily, fontSize, fontColor);
+
+    try {
+      let videoUrl = sourceUrl.trim();
+      const normalizedPauseThreshold = Number.isFinite(Number(pauseThresholdMs))
+        ? Math.max(250, Math.min(3000, Math.round(Number(pauseThresholdMs))))
+        : 1200;
+      const normalizedFilteredWords = filteredWords.split(",").map((word) => word.trim().toLowerCase()).filter(Boolean);
+
+      if (sourceType === "upload" && file) {
+        setStatusMessage(t("status.uploading"));
+        videoUrl = await uploadVideoFile(file, uploadLimitBytes);
+      }
+
+      const request: Record<string, unknown> = {
+        source: { url: videoUrl, title: sourceType === "upload" && file?.name ? file.name.slice(0, 500) : null },
+        font_options: fontOptions,
+        caption_template: captionTemplate,
+        processing_mode: "fast",
+        output_format: outputFormat,
+        clip_length: selectedLength,
+        add_subtitles: addSubtitles,
+        include_broll: brollAvailable && includeBroll,
+        cut_long_pauses: cutLongPauses,
+        pause_threshold_ms: normalizedPauseThreshold,
+        remove_filler_words: removeFillerWords,
+        filtered_words: normalizedFilteredWords,
+      };
+      // Plain highlights without instructions sends exactly the request it always has.
+      const options: WorkflowOptions = {};
+      if (activeWorkflow !== "highlights") {
+        request.workflow = activeWorkflow;
+        if (activeWorkflow === "topic") options.topic = normalizeTopic(topic);
+        if (activeWorkflow === "series" && partCount !== "auto") options.part_count = partCount;
+      }
+      if (advancedCount > 0) options.advanced = advancedChanges;
+      if (Object.keys(options).length > 0) request.workflow_options = options;
+      if (sentInstructions) request.instructions = sentInstructions;
+
+      setStatusMessage(sourceType === "youtube" ? t("status.checkingLength") : t("status.starting"));
+      const startResponse = await fetch("/api/tasks/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(request),
+      });
+
+      if (!startResponse.ok) {
+        const info = await parseApiError(startResponse, t("errors.api", { status: startResponse.status }));
+        const upgradeForError = upgradeReasonForError(info.code, info.detail, upgradeState?.nextPlan?.youtubeMaxMinutes);
+        if (upgradeForError) {
+          openUpgrade(upgradeForError);
+          setIsLoading(false);
+          setStatusMessage("");
+          return;
+        }
+        throw new Error(formatSupportMessage({ ...info, message: workflowErrorMessage(info) ?? info.message }));
+      }
+
+      const startResult = await startResponse.json();
+      const alreadyProcessing = Boolean(startResult.duplicate) || startResult.code === "DUPLICATE_SOURCE";
+      if (!alreadyProcessing) track("task_created", {
+        // Analytics keeps ten fields, so workflow runs lead with theirs; plain highlights reports as before.
+        ...(activeWorkflow !== "highlights" || sentInstructions ? {
+          workflow: activeWorkflow,
+          has_instructions: Boolean(sentInstructions),
+          part_count: activeWorkflow === "series" ? partCount : null,
+        } : {}),
+        source_type: sourceType,
+        caption_template: captionTemplate,
+        output_format: outputFormat,
+        add_subtitles: addSubtitles,
+        include_broll: brollAvailable && includeBroll,
+        cut_long_pauses: cutLongPauses,
+        pause_threshold_ms: normalizedPauseThreshold,
+        remove_filler_words: removeFillerWords,
+        filtered_words: normalizedFilteredWords,
+        processing_mode: "fast",
+      });
+      window.location.href = taskPathFromCreate(startResult);
+    } catch (error) {
+      console.error("Error processing video:", error);
+      setError(error instanceof Error ? error.message : t("errors.processVideo"));
+      setIsLoading(false);
+      setStatusMessage("");
+    }
+  };
+
+  if (isPending || !session?.user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-2xl space-y-4">
+          <Skeleton className="mx-auto h-9 w-64" />
+          <Skeleton className="h-36 w-full rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
+  const limitNote = billingSummary?.max_youtube_duration_seconds
+    ? t("limitNote", {
+        plan: tCommon(`plans.${billingPlanMessageKey(billingSummary.plan)}`),
+        minutes: billingSummary.max_youtube_duration_seconds / 60,
+      })
+    : null;
+
+  return (
+    <AppShell>
+      <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-10 sm:px-8 md:pt-[12vh]">
+        {billingSummary?.cancel_at && billingSummary.subscription_provider === "stripe" && (
+          <SubscriptionCancelBanner
+            cancelAt={billingSummary.cancel_at}
+            onRestarted={() => updateBillingSummary({ cancel_at: null })}
+            className="mb-8"
+          />
+        )}
+        {upgradeState?.needsPayment && <PaymentFailedBanner className="mb-8" />}
+
+        <div className="mx-auto max-w-3xl animate-rise">
+          <h1 className="text-center font-display text-3xl font-bold tracking-tight sm:text-[2.6rem] sm:leading-tight">
+            {greetingText(t, session.user.name)}
+          </h1>
+          <p className="mt-2 text-center text-muted-foreground">
+            {t(`subtitleByWorkflow.${activeWorkflow}`)}
+          </p>
+
+          {upgradeState && <PlanStatusNudge state={upgradeState} onUpgrade={openUpgrade} />}
+
+          <VideoDownloadStatus />
+
+          {workflowsEnabled && (
+            <section className="mt-8 animate-rise" aria-labelledby="what-to-make">
+              <p id="what-to-make" className="mb-2 text-sm font-medium">{t("whatToMake")}</p>
+              <WorkflowPicker value={activeWorkflow} onChange={chooseWorkflow} disabled={controlsDisabled} available={offeredWorkflows} labelId="what-to-make" />
+              {sourceTooShort && sourceSeconds !== null && (
+                <p role="status" className="mt-2 text-xs text-muted-foreground">
+                  {t(`tooShort.${activeWorkflow}`, { duration: formatDuration(sourceSeconds) })}{" "}
+                  <button type="button" onClick={() => chooseWorkflow("highlights")} className="font-medium text-foreground underline-offset-2 hover:underline">
+                    {t("tooShort.useHighlights")}
+                  </button>
+                </p>
+              )}
+              {!sourceTooShort && partsProblem && <p role="status" className="mt-2 text-xs text-muted-foreground">{partsProblem}</p>}
+            </section>
+          )}
+
+          <form
+            noValidate
+            onSubmit={handleSubmit}
+            onDragOver={(event) => { event.preventDefault(); if (!controlsDisabled) setIsDragging(true); }}
+            onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setIsDragging(false); }}
+            onDrop={(event) => {
+              event.preventDefault();
+              setIsDragging(false);
+              if (!controlsDisabled) attachFile(event.dataTransfer.files?.[0] ?? null);
+            }}
+            className={cn(
+              "relative rounded-2xl border bg-background shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_40px_-12px_rgb(0_0_0/0.12)] transition-all focus-within:border-foreground/25 focus-within:shadow-[0_1px_2px_rgb(0_0_0/0.04),0_16px_48px_-12px_rgb(0_0_0/0.18)]",
+              workflowsEnabled ? "mt-4" : "mt-8",
+              isDragging && "border-brand ring-4 ring-brand/15",
+            )}
+          >
+            <input
+              id="video-upload"
+              type="file"
+              accept="video/*"
+              ref={fileInputRef}
+              aria-describedby="source-limits"
+              onChange={(event) => attachFile(event.target.files?.[0] ?? null)}
+              disabled={controlsDisabled}
+              className="hidden"
+            />
+
+            {isDragging && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 rounded-2xl bg-background/95 text-sm font-medium">
+                <Upload className="size-6 text-brand" />{t("drop")}
+              </div>
+            )}
+
+            <div className="flex items-start gap-3 p-3 pb-2 sm:p-4 sm:pb-2">
+              {file ? (
+                <div className="flex min-w-0 flex-1 items-center gap-3 rounded-xl bg-muted/60 p-2 pr-3">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-foreground text-background"><FileVideo className="size-5" /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{t("readyToUpload", { size: formatBytes(file.size) })}</p>
+                  </div>
+                  <button type="button" onClick={() => attachFile(null)} disabled={isLoading} aria-label={t("removeFile")} className="rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground">
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {youtubeThumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={youtubeThumbnailUrl} alt="" className="mt-0.5 hidden h-11 w-[78px] shrink-0 rounded-lg object-cover sm:block" />
+                  ) : (
+                    <span className="mt-0.5 flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">{urlSource ? <VideoSourceIcon source={urlSource} className="size-5" aria-hidden /> : <Link2 className="size-5" aria-hidden />}</span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <label htmlFor="youtube-url" className="sr-only">{t("youtubeUrl")}</label>
+                    <input
+                      id="youtube-url"
+                      ref={urlInputRef}
+                      type="url"
+                      autoFocus
+                      autoComplete="off"
+                      placeholder={t("urlPlaceholder")}
+                      aria-describedby="source-limits"
+                      value={url}
+                      onPaste={() => {
+                        pastedIntoUrl.current = true;
+                        // A paste that changes nothing fires no change event.
+                        requestAnimationFrame(() => { pastedIntoUrl.current = false; });
+                      }}
+                      onChange={(e) => changeUrl(e.target.value)}
+                      onBlur={(e) => { rescueSource(e.target.value); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void handleSubmit(); }}
+                      disabled={controlsDisabled}
+                      className="h-11 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground/80 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {activeWorkflow === "topic" && (
+              <div className="relative flex items-start gap-2 pb-2 pl-[3.5rem] pr-3 sm:pl-[3.75rem] sm:pr-4">
+                <SourceBranch continues={instructionsOffered && instructionsOpen} />
+                <span className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Target className="size-4" aria-hidden /></span>
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="workflow-topic" className="sr-only">{t("topic.label")}</label>
+                  <input
+                    id="workflow-topic"
+                    ref={topicInputRef}
+                    type="text"
+                    autoComplete="off"
+                    maxLength={TOPIC_MAX_CHARS}
+                    placeholder={t("topic.placeholder")}
+                    value={topic}
+                    onChange={(e) => setTopic(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void handleSubmit(); } }}
+                    aria-invalid={showTopicIssue && topicProblem ? true : undefined}
+                    aria-describedby={showTopicIssue && topicProblem ? "workflow-topic-issue" : undefined}
+                    disabled={controlsDisabled}
+                    className="h-11 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground/80 disabled:cursor-not-allowed"
+                  />
+                  {showTopicIssue && topicProblem && (
+                    <p id="workflow-topic-issue" role="alert" className="pb-1 text-xs text-destructive">
+                      {topicProblem === "TOPIC_TOO_LONG" ? t("workflowErrors.TOPIC_TOO_LONG") : t("topic.required")}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {instructionsOffered && instructionsOpen && (
+              <div className="relative flex items-start gap-2 pb-2 pl-[3.5rem] pr-3 sm:pl-[3.75rem] sm:pr-4">
+                <SourceBranch />
+                <span className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><MessageSquareText className="size-4" aria-hidden /></span>
+                <div className="min-w-0 flex-1">
+                  <Textarea
+                    id="workflow-instructions"
+                    ref={instructionsRef}
+                    rows={1}
+                    aria-label={t("instructions.chip")}
+                    maxLength={INSTRUCTIONS_MAX_CHARS}
+                    placeholder={t(`instructions.placeholder.${activeWorkflow}`)}
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void handleSubmit(); } }}
+                    disabled={controlsDisabled}
+                    className="min-h-11 resize-none rounded-none border-0 bg-transparent px-0 py-2.5 text-base shadow-none focus-visible:ring-0 md:text-base dark:bg-transparent"
+                  />
+                  {instructionsUsed >= INSTRUCTIONS_COUNTER_FROM && (
+                    <p className={cn("pb-1 text-right text-xs tabular-nums", instructionsTooLong ? "text-destructive" : "text-muted-foreground")}>
+                      {t("instructions.counter", { used: instructionsUsed, max: INSTRUCTIONS_MAX_CHARS })}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInstructions("");
+                    setInstructionsOpen(false);
+                    // The note and the suggestion were about the request that was just removed.
+                    if (rescue?.kind === "moved") { setRescue(null); setSuggestion(null); }
+                  }}
+                  disabled={controlsDisabled}
+                  aria-label={t("instructions.remove")}
+                  className="mt-2.5 rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+            )}
+
+            {(rescue || suggestion?.workflow) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 pb-2 pl-3 pr-3 text-xs text-muted-foreground sm:pl-[4.5rem] sm:pr-4">
+                {rescue?.kind === "moved" && (
+                  <span role="status">
+                    {t("urlRescue.moved", { text: excerpt(rescue.text) })}{" "}
+                    <button type="button" onClick={undoRescue} className="font-medium text-foreground underline-offset-2 hover:underline">{t("urlRescue.undo")}</button>
+                  </span>
+                )}
+                {rescue?.kind === "notALink" && (
+                  <>
+                    <span role="status">{t("urlRescue.notALink")}</span>
+                    <Chip onClick={moveToInstructions} disabled={controlsDisabled}>
+                      <MessageSquareText className="size-3.5" />{t("urlRescue.moveToInstructions")}
+                    </Chip>
+                  </>
+                )}
+                {suggestion?.workflow && (
+                  <Chip onClick={() => applySuggestion(suggestion)} disabled={controlsDisabled}>
+                    <Sparkles className="size-3.5" />
+                    {suggestion.workflow === "series" && suggestion.partCount
+                      ? t("suggestWorkflow.seriesCount", { count: suggestion.partCount })
+                      : suggestion.workflow === "topic" && suggestion.topic
+                        ? t("suggestWorkflow.topic", { topic: excerpt(suggestion.topic, 40) })
+                        : t(`suggestWorkflow.${suggestion.workflow}`)}
+                  </Chip>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 px-3 pb-3 sm:px-4">
+              {!file && (
+                <Chip onClick={() => fileInputRef.current?.click()} disabled={controlsDisabled} aria-label={t("uploadFile")} aria-describedby="source-limits">
+                  <Paperclip className="size-3.5" /><span className="hidden sm:inline">{t("upload")}</span>
+                </Chip>
+              )}
+
+              {instructionsOffered && (
+                // Icon-only like B-roll, so the desktop composer stays on one row.
+                <Chip
+                  data-tour="instructions"
+                  onClick={toggleInstructions}
+                  disabled={controlsDisabled}
+                  active={instructions.trim().length > 0 || instructionsOpen}
+                  aria-expanded={instructionsOpen}
+                  aria-controls={instructionsOpen ? "workflow-instructions" : undefined}
+                  aria-label={t("instructions.chip")}
+                  title={t("instructions.chip")}
+                  className="px-2"
+                >
+                  <MessageSquareText className="size-3.5" />
+                </Chip>
+              )}
+
+              <ComposerSettings
+                label={t("composerSettings.chip")}
+                footer={<button type="button" disabled={controlsDisabled} onClick={resetCreateSettings} className="w-full rounded-lg px-2.5 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50">{t("composerSettings.reset")}</button>}
+                sections={[
+                  { id: "length", label: lengthText("picker"), icon: <Timer />, value: lengthText(selectedLength), content: (
+                    <>
+                  <p className="mb-2 text-sm font-medium">{lengthText("title")}</p>
+                  <div role="radiogroup" aria-label={lengthText("title")} className="grid gap-1">
+                    {CLIP_LENGTHS.map((length) => (
+                      <button type="button" role="radio" aria-checked={selectedLength === length} disabled={controlsDisabled} key={length} onClick={() => (usesWorkflowLength ? setWorkflowLength(length) : chooseClipLength(length))} className={cn("flex items-center justify-between rounded-lg px-3 py-2 text-sm hover:bg-muted disabled:opacity-50", selectedLength === length && "bg-muted")}>
+                        <span>{lengthText(length)}</span>
+                        {selectedLength === length && <Check className="size-4" />}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">{lengthText("hint")}</p>
+                  {!usesWorkflowLength && clipLengthSaveError && <p role="status" className="mt-2 text-xs text-destructive">{t("clipLength.saveError")}</p>}
+                    </>
+                  ) },
+                  ...(activeWorkflow === "series" ? [{ id: "parts", label: t("parts.title"), icon: <ListOrdered />, value: partLabel, content: (
+                    <>
+                    <p className="mb-2 text-sm font-medium">{t("parts.title")}</p>
+                    <div role="radiogroup" aria-label={t("parts.title")} className="grid grid-cols-4 gap-1">
+                      {partOptions.map((option) => {
+                        const checked = partCount === option;
+                        const tooMany = typeof option === "number" && maxPartsThatFit !== null && option > maxPartsThatFit;
+                        return (
+                          <button
+                            key={option}
+                            type="button"
+                            role="radio"
+                            aria-checked={checked}
+                            aria-label={option === "auto" ? t("parts.auto") : t("parts.count", { count: option })}
+                            disabled={controlsDisabled || tooMany}
+                            onClick={() => { setPartCount(option); setError(null); }}
+                            className={cn(
+                              "flex h-9 items-center justify-center rounded-lg text-sm tabular-nums hover:bg-muted disabled:opacity-40",
+                              option === "auto" && "col-span-4 justify-between px-3",
+                              checked && "bg-muted font-medium",
+                            )}
+                          >
+                            {option === "auto" ? <><span>{t("parts.auto")}</span>{checked && <Check className="size-4" />}</> : option}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">{t("parts.autoHint")}</p>
+                    </>
+                  ) }] : []),
+                  { id: "captions", label: t("captions"), icon: addSubtitles ? <Captions /> : <CaptionsOff />, value: captionSummary, flush: true, content: (
+                  <div className="grid gap-0 sm:h-full sm:grid-cols-[minmax(0,1fr)_180px]">
+                    <div className="min-w-0 space-y-4 overflow-y-auto p-4">
+                      <div className="flex items-center justify-between gap-4 border-b pb-4">
+                        <label htmlFor="add-captions" className="text-sm font-medium">{t("captions")}</label>
+                        <Switch id="add-captions" checked={addSubtitles} onCheckedChange={setAddSubtitles} disabled={controlsDisabled} />
+                      </div>
+                      <div className={cn(!addSubtitles && "pointer-events-none opacity-50")} inert={!addSubtitles}>
+                        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("captionStyle")}</p>
+                        <div className="flex flex-col gap-1" role="radiogroup" aria-label={t("captionStyle")}>
+                          {(availableTemplates.length ? availableTemplates : [{ id: "default", name: t("defaultTemplate"), description: t("defaultTemplateDescription"), animation: "" } as CaptionTemplate]).map((template) => (
+                            <button
+                              key={template.id}
+                              type="button"
+                              role="radio"
+                              aria-checked={captionTemplate === template.id}
+                              onClick={() => setCaptionTemplate(template.id)}
+                              className={cn("flex w-full min-w-0 items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent", captionTemplate === template.id && "bg-accent")}
+                            >
+                              <span className="size-3 shrink-0 rounded-full border" style={{ backgroundColor: template.font_color || "#fff" }} />
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-sm font-medium">{template.name}</span>
+                                <span className="block truncate text-xs text-muted-foreground">{template.description}</span>
+                              </span>
+                              {captionTemplate === template.id && <Check className="size-4" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className={cn("space-y-3 border-t pt-4", !addSubtitles && "pointer-events-none opacity-50")} inert={!addSubtitles}>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("customize")}</p>
+                          {customized && (
+                            <button type="button" className="text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={() => { setFontFamily(null); setFontSize(null); setFontColor(null); }}>
+                              {t("resetTemplate")}
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <label className="text-sm">{t("font")}</label>
+                            <input ref={fontUploadInputRef} type="file" accept=".ttf,.otf" onChange={handleFontUpload} className="hidden" />
+                            <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" disabled={controlsDisabled || isUploadingFont} onClick={() => canUploadCustomFonts ? fontUploadInputRef.current?.click() : openUpgrade({ kind: "custom_fonts" })}>
+                              <Upload className="size-3" />{isUploadingFont ? t("status.uploadingFont") : t("uploadFont")}
+                            </Button>
+                          </div>
+                          {!canUploadCustomFonts && (
+                            <button type="button" onClick={() => openUpgrade({ kind: "custom_fonts" })} className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground">
+                              {t("customFontsPaid")}
+                            </button>
+                          )}
+                          {availableFonts.length > FONT_SEARCH_THRESHOLD && (
+                            <Input value={fontSearch} onChange={(e) => setFontSearch(e.target.value)} placeholder={t("searchFonts")} className="h-8" />
+                          )}
+                          <Select value={fontFamily ?? FONT_TEMPLATE_DEFAULT_VALUE} onValueChange={(value) => setFontFamily(value === FONT_TEMPLATE_DEFAULT_VALUE ? null : value)}>
+                            <SelectTrigger className="w-full"><SelectValue placeholder={t("templateDefault")} /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={FONT_TEMPLATE_DEFAULT_VALUE}>{t("templateDefault")}</SelectItem>
+                              {filteredFonts.map((font) => (
+                                <FontSelectOption key={font.name} font={font} />
+                              ))}
+                              {availableFonts.length > 0 && filteredFonts.length === 0 && <SelectItem value="__no_match__" disabled>{t("noFontMatch")}</SelectItem>}
+                            </SelectContent>
+                          </Select>
+                          {fontLoadError && <p className="text-xs text-amber-700 dark:text-amber-400">{fontLoadError}</p>}
+                        </div>
+                        <CaptionSizeControl value={fontSize} onChange={setFontSize} disabled={controlsDisabled} />
+                        <div className="space-y-2">
+                          <p className="text-sm">{t("color")}</p>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button type="button" onClick={() => setFontColor(null)} className={cn("h-7 rounded-full border px-2.5 text-xs", fontColor === null ? "border-foreground bg-foreground text-background" : "hover:bg-accent")}>{t("template")}</button>
+                            {COLOR_SWATCHES.map((color) => (
+                              <button key={color} type="button" onClick={() => setFontColor(color)} title={color} aria-label={t("captionColor", { color })}
+                                className={cn("size-7 rounded-full border-2 transition-transform hover:scale-110", fontColor === color ? "border-foreground" : "border-border")}
+                                style={{ backgroundColor: color }} />
+                            ))}
+                            <label className="relative size-7 cursor-pointer overflow-hidden rounded-full border-2 border-dashed border-border" title={t("customColor")}>
+                              <input type="color" value={fontColor ?? "#FFFFFF"} onChange={(e) => setFontColor(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={t("customCaptionColor")} />
+                              <span className="absolute inset-1 rounded-full bg-[conic-gradient(red,yellow,lime,cyan,blue,magenta,red)]" />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="hidden border-l bg-muted/40 p-4 sm:block">
+                      <CaptionPreview
+                        thumbnail={youtubeThumbnailUrl}
+                        fontFamily={previewFontFamily}
+                        fontSize={previewFontSize}
+                        color={previewFontColor}
+                      />
+                      <p className="mt-3 text-center text-[11px] text-muted-foreground">{t("livePreview")}</p>
+                    </div>
+                  </div>
+                  ) },
+                  { id: "framing", label: t("framing"), icon: <Crop />, value: t(`framingOptions.${outputFormat}.label`), content: (
+                    <>
+                  <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">{t("framing")}</p>
+                  <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("framing")}>
+                    {FRAMING_IDS.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="radio"
+                        aria-checked={outputFormat === id}
+                        onClick={() => setOutputFormat(id)}
+                        className={cn("rounded-xl border p-3 text-left transition-colors hover:bg-accent", outputFormat === id && "border-foreground ring-1 ring-foreground")}
+                      >
+                        <FramingGlyph kind={id} />
+                        <span className="mt-2 block text-sm font-medium">{t(`framingOptions.${id}.label`)}</span>
+                        <span className="block text-xs text-muted-foreground">{t(`framingOptions.${id}.hint`)}</span>
+                      </button>
+                    ))}
+                  </div>
+                    </>
+                  ) },
+                  { id: "cleanup", label: t("cleanup"), icon: <Wand2 />, count: cleanupCount, content: (
+                    <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">{t("cleanupTitle")}</p>
+                    <p className="text-xs text-muted-foreground">{t("cleanupBody")}</p>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <label htmlFor="cut-pauses" className="text-sm font-medium">{t("shortenPauses")}</label>
+                      <p className="text-xs text-muted-foreground">{t("shortenPausesHint")}</p>
+                    </div>
+                    <Switch id="cut-pauses" checked={cutLongPauses} onCheckedChange={setCutLongPauses} />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" min={250} max={3000} step={50} value={pauseThresholdMs} onChange={(e) => setPauseThresholdMs(e.target.value)} disabled={!cutLongPauses} aria-label={t("pauseThreshold")} className="h-8 w-24" />
+                    <span className="text-xs text-muted-foreground">{t("milliseconds")}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <label htmlFor="filler-words" className="text-sm font-medium">{t("removeFillers")}</label>
+                      <p className="text-xs text-muted-foreground">{t("removeFillersHint")}</p>
+                    </div>
+                    <Switch id="filler-words" checked={removeFillerWords} onCheckedChange={setRemoveFillerWords} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="filtered-words" className="text-xs font-medium text-muted-foreground">{t("extraWords")}</label>
+                    <Input id="filtered-words" value={filteredWords} onChange={(e) => setFilteredWords(e.target.value)} placeholder={t("extraWordsPlaceholder")} className="h-8" />
+                  </div>
+                    </div>
+                  ) },
+                  ...(brollAvailable ? [{ id: "broll", label: t("broll"), icon: <Clapperboard />, value: includeBroll ? t("composerSettings.on") : t("composerSettings.off"), content: (
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <label htmlFor="include-broll" className="text-sm font-medium">{t("broll")}</label>
+                        <p className="text-xs text-muted-foreground">{t("brollHint")}</p>
+                      </div>
+                      <Switch id="include-broll" checked={includeBroll} onCheckedChange={setIncludeBroll} disabled={controlsDisabled} />
+                    </div>
+                  ) }] : []),
+                  ...(workflowsEnabled && advancedSchema.length > 0 ? [{ id: "advanced", label: t("advanced.chip"), icon: <SlidersHorizontal />, count: advancedCount, content: (
+                    <WorkflowAdvancedSettings
+                      schema={advancedSchema}
+                      values={advancedValues}
+                      onChange={(values) => setAdvancedByWorkflow((current) => ({ ...current, [activeWorkflow]: values }))}
+                      disabled={controlsDisabled}
+                    />
+                  ) }] : []),
+                ]}
+                trigger={
+                  <Chip data-tour="composer-settings" disabled={controlsDisabled} active={settingsChanged} className="min-w-0">
+                    <SlidersHorizontal className="size-3.5 shrink-0" />
+                    <span className="sr-only">{t("composerSettings.chip")}: </span>
+                    <span className="truncate">{settingsSummary}</span>
+                    {changedCount > 0 && <span className="shrink-0 rounded-full bg-foreground px-1.5 text-[10px] text-background">{changedCount}</span>}
+                    <ChevronDown className="size-3 shrink-0 opacity-60" />
+                  </Chip>
+                }
+              />
+
+              <div className="ml-auto flex shrink-0 items-center gap-2">
+                {/* The shortcut hint gives way to the workflow chips; empty, it takes no room. */}
+                <span className="hidden text-xs text-muted-foreground sm:inline-flex sm:items-center sm:gap-1 sm:empty:hidden">
+                  {isLoading ? <span role="status">{statusMessage || t("status.working")}</span> : hasSource && !workflowsEnabled ? <><Kbd>⌘</Kbd><Kbd>↵</Kbd></> : null}
+                </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button type="button" aria-label={t("composerSettings.limits")} title={t("composerSettings.limits")} className="flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                      <Info className="size-4" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" collisionPadding={12} className="w-[min(92vw,320px)] space-y-2 rounded-2xl text-xs text-muted-foreground">
+                    <p>{t("uploadLimits", { size: formatUploadLimit(uploadLimitBytes) })}</p>
+                    {limitNote && <p>{limitNote}</p>}
+                    {workflowsEnabled && <button type="button" onClick={() => window.location.assign("/?tour=workflows")} className="block font-medium text-foreground underline-offset-2 hover:underline">{t("composerSettings.tour")}</button>}
+                    <p>
+                      {t.rich("completionEmails", {
+                        settings: (chunks) => (
+                          <Link href="/settings" className="font-medium text-foreground underline-offset-2 hover:underline">{chunks}</Link>
+                        ),
+                      })}
+                    </p>
+                  </PopoverContent>
+                </Popover>
+                <Button
+                  type="submit"
+                  size="icon"
+                  aria-label={t(`generateByWorkflow.${activeWorkflow}`)}
+                  disabled={!hasSource || isLoading || lengthLoading || awaitingWorkflows || topicProblem !== null || instructionsTooLong || advancedProblem !== null}
+                  className="size-9 rounded-full bg-brand text-brand-foreground shadow-sm hover:bg-brand/90 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+                >
+                  {isLoading ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+                </Button>
+              </div>
+            </div>
+          </form>
+
+          {isLoading && statusMessage && <p role="status" className="mt-3 text-center text-sm text-muted-foreground sm:hidden">{statusMessage}</p>}
+
+          {error && (
+            <Alert className="mt-4 border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/40">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <AlertDescription className="text-sm text-red-700 dark:text-red-300">{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <FeatureTourHost enabled={Boolean(session?.user?.id)} busy={hasSource || isLoading || upgradeReason !== null} onWorkflow={previewWorkflow} onEnd={endWorkflowPreview} />
+
+          <p id="source-limits" className="sr-only">
+            {t("uploadLimits", { size: formatUploadLimit(uploadLimitBytes) })}{limitNote ? ` ${limitNote}` : ""}
+          </p>
+        </div>
+
+        <section className="mt-16 md:mt-24" aria-labelledby="recent-heading">
+          <div className="mb-4 flex items-end justify-between">
+            <h2 id="recent-heading" className="font-display text-lg font-bold tracking-tight">{t("recent")}</h2>
+            {recent && recent.length > 0 && (
+              <Link href="/list" className="group flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+                {t("viewLibrary")}<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            )}
+          </div>
+          {recent === null ? (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {[0, 1, 2, 3].map((key) => <Skeleton key={key} className="aspect-[3/4] rounded-xl" />)}
+            </div>
+          ) : recent.length === 0 ? (
+            <div className="rounded-2xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+              {t("recentEmpty")}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4">
+              {recent.map((generation) => <GenerationCard key={generation.id} generation={generation} />)}
+            </div>
+          )}
+        </section>
+      </main>
+      <UpgradeDialog
+        open={upgradeReason !== null}
+        onOpenChange={(open) => { if (!open) setUpgradeReason(null); }}
+        reason={upgradeReason ?? lastUpgradeReason}
+        billing={billingSummary}
+        source="home"
+      />
+    </AppShell>
+  );
+}
+
+/** Ties a detail row to the source above it, like a branch: down from the source icon, then across to this row's icon. */
+function SourceBranch({ continues = false }: { continues?: boolean }) {
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-y-0 left-[2.125rem] sm:left-[2.375rem]">
+      {continues && <span className="absolute inset-y-0 left-0 w-px bg-border" />}
+      <span className="absolute -top-3 left-0 h-[2.125rem] w-[1.375rem] rounded-bl-lg border-b border-l border-border" />
+    </span>
+  );
+}
+
+function Chip({ active, className, children, ...props }: React.ComponentProps<"button"> & { active?: boolean }) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium text-foreground/80 transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-accent",
+        active && "border-foreground/30 bg-accent text-foreground",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CaptionPreview({ thumbnail, fontFamily, fontSize, color }: { thumbnail: string | null; fontFamily: string; fontSize: number; color: string }) {
+  const t = useTranslations("home");
+  return (
+    <div className="relative mx-auto aspect-[9/16] w-full overflow-hidden rounded-xl bg-stone-800 shadow-inner">
+      {thumbnail ? (
+        <div className="absolute inset-0 scale-110 bg-cover bg-center blur-[2px]" style={{ backgroundImage: `url(${thumbnail})` }} />
+      ) : (
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,oklch(0.55_0.05_50),oklch(0.22_0.01_50))]" />
+      )}
+      <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/40 to-transparent" />
+      <p className="absolute inset-x-2 top-[10%] text-center text-[10px] font-bold leading-tight text-white drop-shadow">{t("previewHook")}</p>
+      <p
+        className="absolute inset-x-2 top-[72%] text-center font-bold leading-snug"
+        style={{
+          color,
+          fontFamily: `'${fontFamily}', system-ui, sans-serif`,
+          fontSize: `${Math.max(Math.min(fontSize * 0.5, 18), 10)}px`,
+          textShadow: "0 2px 6px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9)",
+        }}
+      >
+        {t("previewCaptions")}
+      </p>
+    </div>
+  );
+}
+
+function FramingGlyph({ kind }: { kind: OutputFormat }) {
+  return (
+    <span className="flex h-12 items-center justify-center rounded-lg bg-muted" aria-hidden>
+      {kind === "original" ? (
+        <span className="h-6 w-10 rounded-[3px] border-2 border-foreground/70" />
+      ) : kind === "vertical_fit" ? (
+        <span className="flex h-9 w-5 items-center rounded-[3px] border-2 border-foreground/70"><span className="h-3 w-full bg-foreground/30" /></span>
+      ) : kind === "vertical_split" ? (
+        <span className="flex h-9 w-5 flex-col gap-0.5 rounded-[3px] border-2 border-foreground/70 p-0.5"><span className="flex-1 rounded-[1px] bg-foreground/30" /><span className="flex-1 rounded-[1px] bg-foreground/30" /></span>
+      ) : (
+        <span className="relative flex h-9 w-5 items-center justify-center rounded-[3px] border-2 border-foreground/70">
+          <span className={cn("size-2 rounded-full bg-brand", kind === "vertical_pan" && "motion-safe:animate-[pulse_1.4s_ease-in-out_infinite]")} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+function PlanStatusNudge({
+  state,
+  onUpgrade,
+}: {
+  state: NonNullable<ReturnType<typeof getUpgradeState>>;
+  onUpgrade: (reason: UpgradeReason) => void;
+}) {
+  const t = useTranslations("home");
+  const tCommon = useTranslations("common");
+  const { formatMinutes } = useBillingPlanText();
+  const { nextPlan, resetsOn } = state;
+  const refreshes = resetsOn ? t("nudge.refreshesOn", { date: resetsOn }) : t("nudge.refreshesNext");
+  const nextPlanName = nextPlan ? tCommon(`plans.${billingPlanMessageKey(nextPlan.id)}`) : "";
+
+  if (state.needsPayment) return null;
+
+  if (!state.isPaid) {
+    const entry = getPublicBillingPlans()[0];
+    return (
+      <UpgradeNudge
+        className="mt-6"
+        title={t("nudge.startTitle")}
+        description={entry ? t("nudge.startDescription", { price: `$${entry.priceMonthly}`, length: formatMinutes(entry.minuteLimit) }) : undefined}
+        action={t("nudge.seePlans")}
+        onAction={() => onUpgrade({ kind: "start" })}
+      />
+    );
+  }
+
+  if (state.atLimit) {
+    return (
+      <UpgradeNudge
+        className="mt-6"
+        title={state.limit ? t("nudge.limitTitle", { length: formatMinutes(state.limit) }) : t("nudge.limitTitleAll")}
+        description={nextPlan ? t("nudge.limitWithPlan", { refreshes, plan: nextPlanName, limit: formatMinutes(nextPlan.minuteLimit) }) : state.managedByAppStore ? t("nudge.limitAppStore", { refreshes }) : refreshes}
+        action={nextPlan ? t("nudge.getPlan", { plan: nextPlanName }) : undefined}
+        onAction={nextPlan ? () => onUpgrade({ kind: "limit" }) : undefined}
+      />
+    );
+  }
+
+  if (state.nearLimit && state.remaining !== null) {
+    return (
+      <UpgradeNudge
+        className="mt-6"
+        title={t("nudge.remaining", { count: state.remaining })}
+        description={nextPlan ? t("nudge.nearWithPlan", { refreshes, plan: nextPlanName, limit: formatMinutes(nextPlan.minuteLimit) }) : refreshes}
+        action={nextPlan ? t("nudge.upgrade") : undefined}
+        onAction={nextPlan ? () => onUpgrade({ kind: "explore" }) : undefined}
+      />
+    );
+  }
+
+  return null;
+}
