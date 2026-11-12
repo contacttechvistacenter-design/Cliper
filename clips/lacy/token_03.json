@@ -1,0 +1,82 @@
+{
+ "vid": [
+  1176,
+  708,
+  524,
+  262
+ ],
+ "vid_out": [
+  1080,
+  650,
+  410
+ ],
+ "cam": [
+  2,
+  385,
+  520,
+  288
+ ],
+ "cam_out": [
+  880,
+  487,
+  1150
+ ],
+ "hook_y": 290,
+ "cap_y": 1105,
+ "fps": 30,
+ "src": "/home/user/work/lacy/raw_t.ts",
+ "hook": "WHAT IF THE FORTNITE TOKEN HAD\\NA BOUNTY ON YOUR HEAD?",
+ "ranges": [
+  [
+   1.984,
+   36.484
+  ]
+ ],
+ "cues": [
+  [
+   1.984,
+   5.084,
+   "Could you actually imagine if you could drop the token after getting it?"
+  ],
+  [
+   5.184,
+   12.584,
+   "Imagine you had to get it and win the game, but then they'd make it a little less rare. That would still be a crazy concept."
+  ],
+  [
+   14.884,
+   17.084,
+   "That would be insane, bro."
+  ],
+  [
+   19.084,
+   20.584,
+   "Playtime would go up."
+  ],
+  [
+   20.784,
+   22.284,
+   "Make it how rare it is right now."
+  ],
+  [
+   22.784,
+   25.684,
+   "Make it known in the lobby that someone has it, and they have a bounty on their head."
+  ],
+  [
+   26.184,
+   30.484,
+   "And still make it how rare it is right now, but if someone has it, you have to win the game with it."
+  ],
+  [
+   32.384,
+   33.784,
+   "We would be going to town."
+  ],
+  [
+   33.884,
+   36.384,
+   "If any of us died..."
+  ]
+ ]
+}

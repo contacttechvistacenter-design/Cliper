@@ -1,0 +1,96 @@
+{
+ "vid": [
+  1176,
+  708,
+  524,
+  262
+ ],
+ "vid_out": [
+  1080,
+  650,
+  410
+ ],
+ "cam": [
+  2,
+  385,
+  520,
+  288
+ ],
+ "cam_out": [
+  880,
+  487,
+  1150
+ ],
+ "hook_y": 290,
+ "cap_y": 1105,
+ "fps": 30,
+ "src": "/home/user/work/lacy/raw_j.ts",
+ "hook": "COULD LACY BEAT UP JON JONES?",
+ "ranges": [
+  [
+   3.284,
+   25.684
+  ],
+  [
+   47.484,
+   64.284
+  ]
+ ],
+ "cues": [
+  [
+   3.284,
+   4.784,
+   "I'm a better fighter than y'all."
+  ],
+  [
+   5.284,
+   7.084,
+   "Do you think you can beat up Jon Jones?"
+  ],
+  [
+   7.784,
+   10.684,
+   "I don't think you can beat him in 30 seconds."
+  ],
+  [
+   13.584,
+   14.884,
+   "I don't think you'd last 10 seconds."
+  ],
+  [
+   16.584,
+   18.184,
+   "I think you're underestimating me."
+  ],
+  [
+   18.184,
+   21.684,
+   "He would run at you, hit you in the head, and probably knock you out in 2 seconds."
+  ],
+  [
+   21.784,
+   25.584,
+   "Yeah, but you haven't taken into account that I would be fighting back."
+  ],
+  [
+   47.484,
+   53.584,
+   "If Jon Jones ran at you full speed and just kneed you, you would probably die."
+  ],
+  [
+   53.684,
+   54.884,
+   "I'm not even kidding."
+  ],
+  [
+   55.484,
+   58.784,
+   "You have a better chance of curling up in a ball and protecting your body."
+  ],
+  [
+   61.584,
+   63.984,
+   "There's a thousand percent chance he could one-tap you."
+  ]
+ ]
+}

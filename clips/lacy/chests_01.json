@@ -1,0 +1,71 @@
+{
+ "vid": [
+  1176,
+  708,
+  524,
+  262
+ ],
+ "vid_out": [
+  1080,
+  650,
+  410
+ ],
+ "cam": [
+  2,
+  385,
+  520,
+  288
+ ],
+ "cam_out": [
+  880,
+  487,
+  1150
+ ],
+ "hook_y": 290,
+ "cap_y": 1105,
+ "fps": 30,
+ "src": "/home/user/work/lacy/raw_cc.ts",
+ "hook": "LACY SAYS HE'S OPENED 9 MILLION\\NFORTNITE CHESTS",
+ "ranges": [
+  [
+   4.084,
+   31.084
+  ],
+  [
+   49.087,
+   58.087
+  ]
+ ],
+ "cues": [
+  [
+   4.084,
+   7.184,
+   "9,400,079."
+  ],
+  [
+   7.784,
+   15.284,
+   "Let's f***ing go, boys! That's how many chests I've opened. How many? I've opened 9,400,079 chests."
+  ],
+  [
+   15.884,
+   21.384,
+   "You have not opened 9 million, bro. Yes I have, and I still haven't gotten it. That's cap."
+  ],
+  [
+   22.284,
+   30.884,
+   "Literally, bro. It's more like the 9,400,079 range of chests."
+  ],
+  [
+   49.587,
+   51.887,
+   "Day 37 of opening chests."
+  ],
+  [
+   55.687,
+   57.687,
+   "Day 37: wanted to kill myself."
+  ]
+ ]
+}

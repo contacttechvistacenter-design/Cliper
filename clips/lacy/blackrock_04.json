@@ -1,0 +1,106 @@
+{
+ "vid": [
+  1176,
+  708,
+  524,
+  262
+ ],
+ "vid_out": [
+  1080,
+  650,
+  410
+ ],
+ "cam": [
+  2,
+  385,
+  520,
+  288
+ ],
+ "cam_out": [
+  880,
+  487,
+  1150
+ ],
+ "hook_y": 290,
+ "cap_y": 1105,
+ "fps": 30,
+ "src": "/home/user/work/lacy/raw_b.ts",
+ "hook": "LACY ON BLACKROCK:\\N\"WE'RE GONNA GO MISSING\"",
+ "ranges": [
+  [
+   14.984,
+   54.084
+  ],
+  [
+   59.984,
+   70.484
+  ]
+ ],
+ "cues": [
+  [
+   14.984,
+   17.284,
+   "BlackRock is an investment"
+  ],
+  [
+   17.284,
+   21.784,
+   "management corporation, the largest asset manager"
+  ],
+  [
+   21.784,
+   24.784,
+   "with over fifteen trillion dollars in assets."
+  ],
+  [
+   24.784,
+   28.784,
+   "They control everything. Careful, every single thing you're on,"
+  ],
+  [
+   28.784,
+   33.584,
+   "even this game, I'm kidding. Can they manage me? Yeah, of course."
+  ],
+  [
+   33.584,
+   37.784,
+   "You would say some sh*t like that. Wait, is that bad?"
+  ],
+  [
+   37.784,
+   43.084,
+   "I just would say some sh*t like that, bro. Wait, they help you manage money?"
+  ],
+  [
+   43.284,
+   50.484,
+   "Well, they manage the world. They're saying they already do. Yeah, they probably do."
+  ],
+  [
+   50.484,
+   53.984,
+   "They probably own the company that uses your finances. I'm not kidding."
+  ],
+  [
+   59.984,
+   62.484,
+   "Careful bro, if you speak too much we're gonna go missing. I'm dead ass."
+  ],
+  [
+   62.784,
+   64.184,
+   "I'm not talking about it."
+  ],
+  [
+   64.584,
+   68.784,
+   "I'm dead-ass serious. It'll be six years down the line. Everyone thinks it'll be a natural cause and we're just gonna die to them."
+  ],
+  [
+   69.684,
+   70.484,
+   "So just be careful."
+  ]
+ ]
+}

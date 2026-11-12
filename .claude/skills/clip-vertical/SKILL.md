@@ -33,6 +33,8 @@ Same look every time; only the inputs change. Renderer: `clips/tools/render_clip
 - Crop the source so it carries no other platform UI: clock, Twitch logos, burned-in subs (measure how often they
   show; if under ~50% of the time, crop them out and caption everything yourself).
 - Clip is 30-60 s, cut from the best moments, dead air removed, and still makes sense alone.
+- **Hook max 2 lines, box top at y >= ~190**: TikTok's top bar ("Para ti" tabs) covers the first ~170 px. Streamer layout config:
+  `hook_y 290, vid_out [1080,650,410], cap_y 1105, cam_out [880,487,1150]`; gameplay crop `vid [1176,708,524,262]`, face cam `cam [2,385,520,288]`.
 - Hook is a question or tease that stays true to the clip (exaggerate if it helps, never invent).
 - **Never first person** ("entramos", "nos dieron", "le compramos"): the person posting is not the creator and would be
   impersonating them. Use a question, or the creator's name in third person ("Juanca entra a la cocina...").
