@@ -467,3 +467,14 @@ high-cap fallback actors are not called. Runbook: `docs/youtube-download.md`.
   list workflows, list/download/export clips, and public discovery
   (templates, transitions, fonts, B-roll).
 - Run with `cd mcp && uv run supoclip-mcp`. Details in `mcp/README.md`.
+
+## Ponytail (always on)
+
+Use the `ponytail` skill (`.claude/skills/ponytail/SKILL.md`, level `full`) on every task in this repository, for all
+code you write, fix, refactor or review, without being asked each time: the smallest change that fully solves the task,
+reusing what the codebase already has, no extra abstraction or dependency, one small test for new non-trivial logic, and
+end each reply with one or two lines on what you skipped or did not check and any risk. Stay in this mode for the whole
+session unless the user says "stop ponytail" or "normal mode". The user can switch level with `/ponytail lite|full|ultra`.
+Related skills: `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`.
+
+Source: https://github.com/DietrichGebert/ponytail (MIT), copied at commit 96608e0.
