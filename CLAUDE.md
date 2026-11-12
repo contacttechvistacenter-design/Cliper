@@ -478,3 +478,9 @@ session unless the user says "stop ponytail" or "normal mode". The user can swit
 Related skills: `/ponytail-review`, `/ponytail-audit`, `/ponytail-debt`, `/ponytail-gain`, `/ponytail-help`.
 
 Source: https://github.com/DietrichGebert/ponytail (MIT), copied at commit 96608e0.
+
+## Clips: platform safety (always on)
+
+Before delivering any clip, check it for minors, sexual or insulting language, slurs and hateful jokes (also in jokes or
+AI/fake videos). YouTube already removed a clip for this. Cut or skip those parts, never caption words you only guessed
+(Whisper mishears kids), and tell the user when a clip has a minor or sensitive wording. Full rule: `clip-vertical` skill.
