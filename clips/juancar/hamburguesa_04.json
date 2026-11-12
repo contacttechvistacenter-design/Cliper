@@ -1,0 +1,73 @@
+{
+ "src": "/home/user/work/juancar/video5.mp4",
+ "thumb": "clips/juancar/assets/thumb_comida_barata_vs_cara.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "LA HAMBURGUESA CHINA\\NQUE PICA DE LOCOS",
+ "ranges": [
+  [
+   286.7,
+   306
+  ],
+  [
+   337.7,
+   357.5
+  ]
+ ],
+ "cues": [
+  [
+   287,
+   291.95,
+   "Chinese hamburger. Pues yo le he metido uno, ¿eh? Sí, tiene buena pinta."
+  ],
+  [
+   292,
+   295.95,
+   "En rojo no, bro. Oye, yo le meto, ¿eh? Sí, sí, sí."
+  ],
+  [
+   296,
+   297.3,
+   "Vale, 12."
+  ],
+  [
+   299,
+   301.9,
+   "No me lo creo. Original... burger."
+  ],
+  [
+   302,
+   306,
+   "¿Cuál es mejor? ¿Ese o ese? ¿Cuál es mejor?"
+  ],
+  [
+   338,
+   339.3,
+   "Está rico."
+  ],
+  [
+   344,
+   346.1,
+   "La carne un poquito..."
+  ],
+  [
+   347,
+   349.1,
+   "¿Un poquito china, no?"
+  ],
+  [
+   352,
+   353.45,
+   "Bye, bye. Está bueno."
+  ],
+  [
+   353.5,
+   355.95,
+   "Está muy bueno, pero pica como la madre que lo parió."
+  ],
+  [
+   356,
+   356.9,
+   "Agüita."
+  ]
+ ]
+}

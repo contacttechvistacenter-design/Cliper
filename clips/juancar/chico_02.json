@@ -1,0 +1,53 @@
+{
+ "src": "/home/user/work/juancar/video5.mp4",
+ "thumb": "clips/juancar/assets/thumb_comida_barata_vs_cara.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "LE COMPRAMOS COMIDA A UN\\NCHICO ESTAFADO EN CHINA",
+ "ranges": [
+  [
+   376.7,
+   409.5
+  ],
+  [
+   427.7,
+   439.5
+  ]
+ ],
+ "cues": [
+  [
+   377,
+   382.3,
+   "Le compramos algo de comidita. What do you want? Come, come, come."
+  ],
+  [
+   383,
+   384.95,
+   "Vamos a pillarle dos."
+  ],
+  [
+   385,
+   390.95,
+   "Este chaval se ha acercado. Dice que lo timaron a muerte, que vino a encontrar un trabajo y que si le podemos comprar algo de comer."
+  ],
+  [
+   391,
+   396.3,
+   "Vamos a comprarle un par de esos y una botellita de agua."
+  ],
+  [
+   400,
+   409.3,
+   "Okay. Dice que no está muy lejos y también dice que es una ciudad que tiene muy buenas luces por la noche."
+  ],
+  [
+   428,
+   433.95,
+   "Hombre, si me pide 10 euros, pues le digo que no. Pero si me pide comida porque tiene hambre, pues se la compro. Ya está."
+  ],
+  [
+   434,
+   439.5,
+   "Va a costar cuatro euros, ¿sabes? Con eso come hasta la semana que viene."
+  ]
+ ]
+}

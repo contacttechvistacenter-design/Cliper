@@ -1,0 +1,101 @@
+{
+ "src": "/home/user/work/juancar/video5.mp4",
+ "thumb": "clips/juancar/assets/thumb_comida_barata_vs_cara.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "¿259 € POR UNA COMIDA\\NEN CHINA?",
+ "ranges": [
+  [
+   733.7,
+   742
+  ],
+  [
+   757.7,
+   765
+  ],
+  [
+   774.7,
+   781.5
+  ],
+  [
+   788.7,
+   806.5
+  ]
+ ],
+ "cues": [
+  [
+   734,
+   735.95,
+   "Nos lo comemos crudillo."
+  ],
+  [
+   736,
+   737.95,
+   "Pruébalo. Tiene que estar malo."
+  ],
+  [
+   738,
+   741.7,
+   "No, no, no. Que no como nada crudo."
+  ],
+  [
+   758,
+   760.1,
+   "¿Qué tal? ¿Está hecho?"
+  ],
+  [
+   761,
+   762.95,
+   "No, está muy hecho."
+  ],
+  [
+   763,
+   764.7,
+   "Sí, está bueno."
+  ],
+  [
+   775,
+   781.5,
+   "A mí lo que me faltaba es un poco de mayonesa, un poquito de alioli, ¿no?"
+  ],
+  [
+   789,
+   790.7,
+   "Tiene buena pinta."
+  ],
+  [
+   792,
+   793.95,
+   "Está rico. Está muy frío."
+  ],
+  [
+   794,
+   795.95,
+   "A comerlo poco a poco, ¿no?"
+  ],
+  [
+   796,
+   798.5,
+   "259 euros en la comida."
+  ],
+  [
+   799,
+   800.95,
+   "En China, madre mía."
+  ],
+  [
+   801,
+   802.45,
+   "Y para que luego digan que en China es barato."
+  ],
+  [
+   802.5,
+   804.95,
+   "Me voy sin pagar. Vámonos."
+  ],
+  [
+   805,
+   806.5,
+   "Ya has pagado."
+  ]
+ ]
+}

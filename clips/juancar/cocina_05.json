@@ -1,0 +1,86 @@
+{
+ "src": "/home/user/work/juancar/video5.mp4",
+ "thumb": "clips/juancar/assets/thumb_comida_barata_vs_cara.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "ENTRAMOS A LA COCINA DE\\NUN RESTAURANTE BARATO",
+ "ranges": [
+  [
+   180.7,
+   190.5
+  ],
+  [
+   212.7,
+   219
+  ],
+  [
+   253.7,
+   258
+  ],
+  [
+   268.7,
+   283.7
+  ]
+ ],
+ "cues": [
+  [
+   181,
+   182.95,
+   "Vamos a mirar cómo lo cocina, señora."
+  ],
+  [
+   183,
+   187.95,
+   "Uy, qué bonito. Está pasando todos los estándares de limpieza y eso, ¿no?"
+  ],
+  [
+   188,
+   190.5,
+   "Sí, sí. La verdad es que... entra ahí dentro."
+  ],
+  [
+   213,
+   219,
+   "Yo le como dos trocitos y lo dejo. Después de esto nos hacemos un lavado de estómago."
+  ],
+  [
+   254,
+   257.3,
+   "Está echando todos los mosquitos para fuera."
+  ],
+  [
+   269,
+   270.95,
+   "Hay un gato. Hay un gato."
+  ],
+  [
+   271,
+   271.9,
+   "Gatito."
+  ],
+  [
+   273,
+   274.95,
+   "Miau, miau, miau, miau."
+  ],
+  [
+   275,
+   276.95,
+   "A ver, tampoco lo veo tan mal, ¿eh?"
+  ],
+  [
+   277,
+   278.95,
+   "Tampoco lo veo tan, tan, tan mal."
+  ],
+  [
+   279,
+   281.5,
+   "Vámonos. Vámonos antes de que..."
+  ],
+  [
+   283,
+   283.7,
+   "Bye, bye, bye."
+  ]
+ ]
+}

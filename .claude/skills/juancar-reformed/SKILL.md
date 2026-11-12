@@ -40,7 +40,16 @@ each file from its own `doc-XX-XX-docs.googleusercontent.com` host, so add the o
 environment's allowed hosts. List the folder with `gdown.download_folder`'s internal `_download_and_parse_google_drive_link`
 (plain `download_folder` fails on Google Docs).
 
-## Done so far
-- Video 5, clip 1: dog meat, 40 s: `clips/juancar/perro_01.mp4` (+ `.json` config, `.txt` description). Waiting for the
-  user's OK before making more. Thumbnail used: `clips/juancar/assets/thumb_comida_barata_vs_cara.jpg`.
-- Source videos have burned-in Spanish subs only ~15% of the time and a Twitch clock/logos: cropped out, own captions.
+## Done so far (all from Video 5, cut from the Drive transcript doc `1yV70cutvxvF_MFqD7e860lZmknGRA2SXSPRzMalyDpg`)
+Clips live in `clips/juancar/<name>.mp4` with a `<name>.json` config (render: `python clips/tools/render_clip.py cfg.json out.mp4`).
+| clip | moment | hook |
+|---|---|---|
+| perro_01 | 0:19 dog meat | ¿NOS DIERON CARNE DE PERRO GRATIS? |
+| chico_02 | 6:17 + 7:08, buying food for a scammed guy | LE COMPRAMOS COMIDA A UN CHICO ESTAFADO EN CHINA |
+| 259_03 | 12:14-13:26, the 259 euro meal | ¿259 € POR UNA COMIDA EN CHINA? |
+| hamburguesa_04 | 4:47 + 5:38, spicy Chinese burger | LA HAMBURGUESA CHINA QUE PICA DE LOCOS |
+| cocina_05 | 3:01-4:43, the street-food kitchen and the cat | ENTRAMOS A LA COCINA DE UN RESTAURANTE BARATO |
+Unused moments: bamboo ice cream 1:33, hot pot 14:18, restaurant show 15:48, toilet "desodorante" 18:22, Sevilla vs China noodles 17:16.
+- Source has burned-in Spanish subs only ~15% of the time plus a Twitch clock/logos: cropped out, own captions.
+- Every clip uses the same thumbnail (`clips/juancar/assets/thumb_comida_barata_vs_cara.jpg`, the dog-meat one). The Drive has
+  other thumbnails for A/B tests (folder "Vídeo 5"); ask before swapping.
