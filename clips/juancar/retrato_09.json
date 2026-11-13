@@ -1,0 +1,87 @@
+{
+ "src": "/home/user/work/juancar6/video6.mp4",
+ "thumb": "clips/juancar/assets/thumb_cuanto_gasto_3.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "¿SE PARECE? UN ARTISTA CHINO\\NLE DIBUJA EL RETRATO",
+ "ranges": [
+  [
+   595.2,
+   602.8
+  ],
+  [
+   606.0,
+   614.0
+  ],
+  [
+   624.8,
+   640.5
+  ]
+ ],
+ "cues": [
+  [
+   595.2,
+   598.0,
+   "Mira, gratis si no estás satisfecho."
+  ],
+  [
+   598.0,
+   600.0,
+   "Pues no estoy satisfecho."
+  ],
+  [
+   600.0,
+   602.8,
+   "A ver, ese está guapo, ¿eh? Lo está haciendo."
+  ],
+  [
+   606.0,
+   607.0,
+   "Yo me pongo atrás a grabarle."
+  ],
+  [
+   607.0,
+   611.0,
+   "¿Quién es el artista? Este."
+  ],
+  [
+   611.0,
+   614.0,
+   "Okay. El artista. Métele cañita."
+  ],
+  [
+   625.0,
+   626.6,
+   "La ha hecho muy delgado, pero muy bomba."
+  ],
+  [
+   627.4,
+   627.9,
+   "¡Ojo!"
+  ],
+  [
+   630.7,
+   631.8,
+   "¡Oh! ¡Buena, buena!"
+  ],
+  [
+   632.2,
+   634.4,
+   "Perfect, perfect! Very good!"
+  ],
+  [
+   635.1,
+   637.3,
+   "La ha hecho más delgado, pero la ha hecho muy bien."
+  ],
+  [
+   637.5,
+   638.8,
+   "¡Muy, muy bien!"
+  ],
+  [
+   639.7,
+   640.5,
+   "¡Oh, está guapo!"
+  ]
+ ]
+}

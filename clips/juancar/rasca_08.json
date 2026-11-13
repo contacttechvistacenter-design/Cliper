@@ -1,0 +1,118 @@
+{
+ "src": "/home/user/work/juancar6/video6.mp4",
+ "thumb": "clips/juancar/assets/thumb_cuanto_gasto_3.jpg",
+ "logo": "clips/juancar/assets/logo.png",
+ "hook": "¿SALE PREMIO EN UN RASCA\\NDE 2 € EN CHINA?",
+ "ranges": [
+  [
+   63.0,
+   80.8
+  ],
+  [
+   84.8,
+   105.5
+  ]
+ ],
+ "cues": [
+  [
+   63.1,
+   64.0,
+   "Esto es de lotería."
+  ],
+  [
+   64.2,
+   65.0,
+   "Ah, qué bueno."
+  ],
+  [
+   65.3,
+   68.0,
+   "Son rascas."
+  ],
+  [
+   68.0,
+   70.0,
+   "20, 20 yenes. 20 yenes."
+  ],
+  [
+   70.0,
+   74.0,
+   "Son 2 €, 2 € y pico. ¿Qué hace?"
+  ],
+  [
+   74.0,
+   76.0,
+   "¿Quieres jugar al casino? Claro, claro,"
+  ],
+  [
+   76.0,
+   78.0,
+   "claro. Yo raspo, raspo así"
+  ],
+  [
+   78.0,
+   80.8,
+   "uno. Ya está, ya está."
+  ],
+  [
+   85.0,
+   86.0,
+   "Ay, qué rico."
+  ],
+  [
+   86.0,
+   88.5,
+   "Está hablando."
+  ],
+  [
+   90.0,
+   91.4,
+   "¡Win, win, win, win!"
+  ],
+  [
+   92.0,
+   92.6,
+   "¿Y ahora qué?"
+  ],
+  [
+   92.7,
+   93.6,
+   "¡Win, win, win, win!"
+  ],
+  [
+   93.8,
+   95.0,
+   "¡Chequéalo! Chequea."
+  ],
+  [
+   95.0,
+   96.0,
+   "Nada, no hay nada, ¿no?"
+  ],
+  [
+   96.2,
+   96.6,
+   "¡Oh!"
+  ],
+  [
+   97.4,
+   100.0,
+   "¡Oh, oh, oh, oh, oh!"
+  ],
+  [
+   100.3,
+   101.9,
+   "Ah, esto es lo que tengo que sacar."
+  ],
+  [
+   102.5,
+   104.8,
+   "Un 14, 25, 8, ¿no?"
+  ],
+  [
+   104.9,
+   105.5,
+   "No he sacado nada."
+  ]
+ ]
+}

@@ -52,6 +52,9 @@ Clips live in `clips/juancar/<name>.mp4` with a `<name>.json` config (render: `p
 | hamburguesa_04 | 4:47 + 5:38, spicy Chinese burger | LA HAMBURGUESA CHINA QUE PICA DE LOCOS |
 | cocina_05 | 3:01-4:43, the street-food kitchen and the cat | JUANCA ENTRA A LA COCINA DE UN RESTAURANTE BARATO |
 | iphone_06 | Video 6, 15:21-16:35, iPhone prices and haggling | ¿CUÁNTO CUESTA UN IPHONE EN CHINA? |
+| helado_07 | Video 6, 0:16-1:03, dog-shaped ice cream | EL HELADO CON FORMA DE PERRO MÁS VIRAL DE CHINA |
+| rasca_08 | Video 6, 1:03-1:45, 2 euro scratch card | ¿SALE PREMIO EN UN RASCA DE 2 € EN CHINA? |
+| retrato_09 | Video 6, 9:55-10:40, hand-drawn portrait (small kids in the background in the first ~9 s) | ¿SE PARECE? UN ARTISTA CHINO LE DIBUJA EL RETRATO |
 Unused moments (video 5): bamboo ice cream 1:33, hot pot 14:18, restaurant show 15:48, toilet "desodorante" 18:22, Sevilla vs China noodles 17:16.
 - Source has burned-in Spanish subs only ~15% of the time plus a Twitch clock/logos: cropped out, own captions.
 - Every clip uses the same thumbnail (`clips/juancar/assets/thumb_comida_barata_vs_cara.jpg`, the dog-meat one). The Drive has
@@ -61,5 +64,4 @@ Unused moments (video 5): bamboo ice cream 1:33, hot pot 14:18, restaurant show 
 - Source `video6.mp4` 1280x720 30fps, 18 min; transcript doc `1ijwOlXa77IpL7bABNCIUk1K8Ggu8UAhvIkYNHKZ0d-4` (timestamps ~match the video).
 - Three thumbnails (saved in `clips/juancar/assets/thumb_cuanto_gasto_{1,2,3}.jpg`): 1 = red shirt holding a 1 euro coin + "China";
   2 = shopping bags (Nike/Uniqlo/Adidas) + "China"; 3 = same bags + green "EEE". Chosen for the iPhone clip: 3 (money matches "cuánto gasto").
-- Other moments seen: dog-shaped ice cream 0:14, lottery scratch cards 1:10, football shirt haggling 6:41, hand portrait 9:39,
-  foot massage 11:00, tourist pack 13:15. Avoid: the replica gun 5:06 and the "reina/loca" vendor banter 4:09 (platform safety).
+- Other moments seen: football shirt haggling 6:41 (noisy audio, unclear ending), foot massage 11:00, tourist pack 13:15. Avoid: the replica gun 5:06 and the "reina/loca" vendor banter 4:09 (platform safety).
