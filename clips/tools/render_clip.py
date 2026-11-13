@@ -11,9 +11,10 @@ import json, subprocess, sys
 CFG = json.load(open(sys.argv[1]))
 SRC, HOOK = CFG["src"], CFG["hook"]
 THUMB, LOGO = CFG.get("thumb"), CFG.get("logo")   # both optional
-VID, VID_OUT = CFG.get("vid", [1160, 525, 60, 60]), CFG.get("vid_out", [1080, 489, 330])  # vid: source crop [w,h,x,y]; vid_out: [w,h,y]
+VID, VID_OUT = CFG.get("vid", [1160, 483, 60, 60]), CFG.get("vid_out", [1080, 450, 395])  # vid: source crop [w,h,x,y]; vid_out: [w,h,y]
 CAM, CAM_OUT = CFG.get("cam"), CFG.get("cam_out", [880, 495, 1150])    # optional face cam: crop [x,y,w,h]; out [w,h,y]
-HOOK_Y, CAP_Y, FPS = CFG.get("hook_y", 215), CFG.get("cap_y", 1000), CFG.get("fps", 30)
+HOOK_Y, CAP_Y, FPS = CFG.get("hook_y", 285), CFG.get("cap_y", 1000), CFG.get("fps", 30)
+THUMB_Y, LOGO_Y = CFG.get("thumb_y", 1070), CFG.get("logo_y", 858)
 FONTS = CFG.get("fonts", "backend/fonts")
 RANGES = [tuple(r) for r in CFG["ranges"]]   # kept source ranges, in order (seconds)
 CUES = [tuple(c) for c in CFG["cues"]]       # (start, end, text) in source seconds
@@ -82,9 +83,9 @@ if CAM:
     fc += f"[c3]crop={CAM[2]}:{CAM[3]}:{CAM[0]}:{CAM[1]},scale={CAM_OUT[0]}:{CAM_OUT[1]},unsharp=5:5:0.6[camv];"
     steps.append(("camv", f"(W-w)/2:{CAM_OUT[2]}"))
 if THUMB:
-    fc += f"[{idx}:v]scale=1080:608[thumb];"; idx += 1; steps.append(("thumb", "0:1085"))
+    fc += f"[{idx}:v]scale=1080:608[thumb];"; idx += 1; steps.append(("thumb", f"0:{THUMB_Y}"))
 if LOGO:
-    fc += f"[{idx}:v]crop=1840:275:40:205,scale=560:-1[logo];"; idx += 1; steps.append(("logo", "(W-w)/2:838"))
+    fc += f"[{idx}:v]crop=1840:275:40:205,scale=560:-1[logo];"; idx += 1; steps.append(("logo", f"(W-w)/2:{LOGO_Y}"))
 for i, (lab, pos) in enumerate(steps):
     fc += f"[{cur}][{lab}]overlay={pos}[t{i}];"; cur = f"t{i}"
 fc += f"[{cur}]ass={D}/clip.ass:fontsdir={FONTS},format=yuv420p[v];[ca]loudnorm=I=-14:TP=-1.5:LRA=11[a]"

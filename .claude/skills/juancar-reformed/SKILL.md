@@ -19,6 +19,7 @@ Goal: promote the videos so people watch the full original on YouTube. Build cli
   "Juancar Reformed" watermark (cover the Twitch logo).
 - Description must say to watch the full video on YouTube searching **Juancar Reformed**, e.g. "Vídeo completo en
   YouTube: Juancar Reformed". A name is enough; no link needed.
+- Hook sits low (box top ~190 px): the user said the old, higher one was hard to read under TikTok's top bar.
 - Hooks: never first person; say "Juanca ..." or ask a question (user's rule).
 - Allowed: taking things out of context to go viral, if it still makes sense with the clip.
 - Not allowed: reactions, full-screen/unedited video, hookless or senseless clips, CapCut/OpusClip marks, the same
@@ -50,7 +51,15 @@ Clips live in `clips/juancar/<name>.mp4` with a `<name>.json` config (render: `p
 | 259_03 | 12:14-13:26, the 259 euro meal | ¿259 € POR UNA COMIDA EN CHINA? |
 | hamburguesa_04 | 4:47 + 5:38, spicy Chinese burger | LA HAMBURGUESA CHINA QUE PICA DE LOCOS |
 | cocina_05 | 3:01-4:43, the street-food kitchen and the cat | JUANCA ENTRA A LA COCINA DE UN RESTAURANTE BARATO |
-Unused moments: bamboo ice cream 1:33, hot pot 14:18, restaurant show 15:48, toilet "desodorante" 18:22, Sevilla vs China noodles 17:16.
+| iphone_06 | Video 6, 15:21-16:35, iPhone prices and haggling | ¿CUÁNTO CUESTA UN IPHONE EN CHINA? |
+Unused moments (video 5): bamboo ice cream 1:33, hot pot 14:18, restaurant show 15:48, toilet "desodorante" 18:22, Sevilla vs China noodles 17:16.
 - Source has burned-in Spanish subs only ~15% of the time plus a Twitch clock/logos: cropped out, own captions.
 - Every clip uses the same thumbnail (`clips/juancar/assets/thumb_comida_barata_vs_cara.jpg`, the dog-meat one). The Drive has
   other thumbnails for A/B tests (folder "Vídeo 5"); ask before swapping.
+
+## Video 6 ("Cuánto Gasto en un Día en China", Drive folder "Video 6 (MUY VIRAL)")
+- Source `video6.mp4` 1280x720 30fps, 18 min; transcript doc `1ijwOlXa77IpL7bABNCIUk1K8Ggu8UAhvIkYNHKZ0d-4` (timestamps ~match the video).
+- Three thumbnails (saved in `clips/juancar/assets/thumb_cuanto_gasto_{1,2,3}.jpg`): 1 = red shirt holding a 1 euro coin + "China";
+  2 = shopping bags (Nike/Uniqlo/Adidas) + "China"; 3 = same bags + green "EEE". Chosen for the iPhone clip: 3 (money matches "cuánto gasto").
+- Other moments seen: dog-shaped ice cream 0:14, lottery scratch cards 1:10, football shirt haggling 6:41, hand portrait 9:39,
+  foot massage 11:00, tourist pack 13:15. Avoid: the replica gun 5:06 and the "reina/loca" vendor banter 4:09 (platform safety).

@@ -19,14 +19,17 @@ Same look every time; only the inputs change. Renderer: `clips/tools/render_clip
 - Hook language = language of the video. Captions same language.
 
 ## Layout (1080x1920)
-| y | what |
+| y | what (Juancar / thumbnail layout) |
 |---|------|
-| 0-330 | blurred copy of the video + **hook** (white box, black bold text, 2 lines, whole clip) |
-| 330-819 | video strip (crop 1160x525 from a 1280x720 source) |
-| 838 | channel watermark, centered, 560 wide |
+| 0-190 | empty: TikTok's top bar ("Para ti") covers it |
+| 190-380 | blurred copy of the video + **hook** (white box, black bold text, max 2 lines, whole clip) |
+| 395-845 | video strip (crop 1160x483 from a 1280x720 source) |
+| 858 | channel watermark, centered, 560 wide |
 | ~1000 | captions, 3 words max, current word yellow, own band |
-| 1085-1693 | thumbnail 1080x608 |
-| 1693-1920 | left empty for TikTok's own UI |
+| 1070-1678 | thumbnail 1080x608 |
+| 1678-1920 | left empty for TikTok's own UI |
+
+Streamer layout (face cam instead of thumbnail): see the config values in the rules below.
 
 ## Rules
 - **Captions and hook never cover a face**: they live in their own bands, not over the video or the thumbnail.
